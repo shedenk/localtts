@@ -562,21 +562,26 @@
               </div>
             </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
-              <div class="space-y-1">
-                <div class="flex items-center justify-between text-slate-400 font-medium">
-                  <span>Sample Request (<span class="uppercase text-indigo-300" x-text="apiLang"></span>)</span>
-                  <button @click="copyText(endpointCode(activeEndpoint()))"
-                    class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px]">Copy Code</button>
+            <div class="space-y-4">
+              <template x-for="(step, sidx) in endpointSteps(activeEndpoint())" :key="sidx">
+                <div class="space-y-2.5" :class="sidx > 0 ? 'pt-3 border-t border-slate-800' : ''">
+                  <div x-show="step.title" class="text-xs font-semibold text-amber-300" x-text="step.title"></div>
+                  <div class="space-y-1">
+                    <div class="flex items-center justify-between text-slate-400 font-medium">
+                      <span>Sample Request (<span class="uppercase text-indigo-300" x-text="apiLang"></span>)</span>
+                      <button @click="copyText(step.request)"
+                        class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px]">Copy Code</button>
+                    </div>
+                    <pre class="bg-slate-900 border border-slate-800 rounded-xl p-3 overflow-x-auto text-indigo-300 leading-relaxed"
+                      x-text="step.request"></pre>
+                  </div>
+                  <div class="space-y-1">
+                    <div class="text-slate-400 font-medium">Sample Response (<span class="text-emerald-400" x-text="step.status"></span>)</div>
+                    <pre class="bg-slate-900 border border-slate-800 rounded-xl p-3 overflow-x-auto text-emerald-300 leading-relaxed"
+                      x-text="step.response"></pre>
+                  </div>
                 </div>
-                <pre class="bg-slate-900 border border-slate-800 rounded-xl p-3 overflow-x-auto text-indigo-300 leading-relaxed"
-                  x-text="endpointCode(activeEndpoint())"></pre>
-              </div>
-              <div class="space-y-1">
-                <div class="text-slate-400 font-medium">Sample Response (<span class="text-emerald-400" x-text="activeEndpoint().status"></span>)</div>
-                <pre class="bg-slate-900 border border-slate-800 rounded-xl p-3 overflow-x-auto text-emerald-300 leading-relaxed"
-                  x-text="activeEndpoint().response"></pre>
-              </div>
+              </template>
             </div>
 
             <div class="space-y-1">
@@ -1130,6 +1135,55 @@
         activeEndpoint() {
           if (!this.selectedEp) return null;
           return this.apiEndpoints().find(e => e.id === this.selectedEp) || null;
+        },
+        endpointSteps(ep) {
+          if (!ep) return [];
+          if (ep.id !== 'jobs_speech' && ep.id !== 'jobs_stt') {
+            return [{ title: '', request: this.endpointCode(ep), status: ep.status, response: ep.response }];
+          }
+          const isTts = ep.id === 'jobs_speech';
+          const allEps = this.apiEndpoints();
+          const statusEp = allEps.find(e => e.id === 'job_status');
+          const resultEp = allEps.find(e => e.id === 'job_result');
+
+          return [
+            {
+              title: isTts ? 'Step 1 — Enqueue TTS Job (POST /v1/jobs/speech)' : 'Step 1 — Enqueue STT Job (POST /v1/jobs/transcriptions)',
+              request: isTts ? this.enqueueOnlyCode('tts') : this.endpointCode(ep),
+              status: ep.status,
+              response: ep.response,
+            },
+            {
+              title: 'Step 2 — Cek Progress & Nomor Antrian (GET /v1/jobs/{job_id})',
+              request: this.endpointCode(statusEp),
+              status: statusEp.status,
+              response: statusEp.response,
+            },
+            {
+              title: 'Step 3 — Ambil Hasil Setelah Completed (GET /v1/jobs/{job_id}/result)',
+              request: this.endpointCode(resultEp),
+              status: resultEp.status,
+              response: isTts ? 'Binary Audio Stream (Content-Type: audio/mpeg)' : '{"text": "...", "language": "id", "segments": [...]}',
+            },
+          ];
+        },
+        enqueueOnlyCode(kind) {
+          const base = location.origin;
+          const auth = this.sys.api_auth_enabled;
+          const key = this.sys.api_key || 'YOUR_API_KEY';
+          if (this.apiLang === 'curl') {
+            return `curl -X POST ${base}/v1/jobs/speech \\\n  -H "Content-Type: application/json"${auth ? ` \\\n  -H "Authorization: Bearer ${key}"` : ''} \\\n  -d '{"model":"edge","input":"Halo dari antrian job!","voice":"id-ID-GadisNeural","language":"id","webhook_url":"https://webhook.site/your-id"}'`;
+          }
+          if (this.apiLang === 'python') {
+            return `import requests\n\nres = requests.post(\n    "${base}/v1/jobs/speech",${auth ? `\n    headers={"Authorization": "Bearer ${key}"},` : ''}\n    json={"model": "edge", "input": "Halo dari antrian job!", "voice": "id-ID-GadisNeural", "language": "id"},\n)\nprint(res.json())`;
+          }
+          if (this.apiLang === 'javascript') {
+            return `const res = await fetch("${base}/v1/jobs/speech", {\n  method: "POST",\n  headers: { "Content-Type": "application/json"${auth ? `, "Authorization": "Bearer ${key}"` : ''} },\n  body: JSON.stringify({ model: "edge", input: "Halo!", voice: "id-ID-GadisNeural", language: "id" }),\n});\nconsole.log(await res.json());`;
+          }
+          if (this.apiLang === 'php') {
+            return `<?php\n$ch = curl_init("${base}/v1/jobs/speech");\ncurl_setopt_array($ch, [\n  CURLOPT_POST => true, CURLOPT_RETURNTRANSFER => true,\n  CURLOPT_HTTPHEADER => ["Content-Type: application/json"${auth ? `, "Authorization: Bearer ${key}"` : ''}],\n  CURLOPT_POSTFIELDS => json_encode(["model" => "edge", "input" => "Halo!", "voice" => "id-ID-GadisNeural", "language" => "id"]),\n]);\necho curl_exec($ch);`;
+          }
+          return `// POST ${base}/v1/jobs/speech -> 202 {job_id, queue_position, status_url, result_url}`;
         },
         endpointCode(ep) {
           if (!ep) return '';
