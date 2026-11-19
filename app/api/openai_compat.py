@@ -101,6 +101,9 @@ async def create_speech(req: SpeechRequest):
         duration_sec=duration,
         process_sec=elapsed,
         rtf=rtf,
+        source="api",
+        status="completed",
+        progress=100,
     )
     log_api_call("/v1/audio/speech", "POST", 200, engine.name, elapsed)
 
@@ -251,6 +254,9 @@ async def create_transcription(
         duration_sec=res.duration_sec,
         process_sec=elapsed,
         rtf=rtf,
+        source="api",
+        status="completed",
+        progress=100,
     )
     log_api_call("/v1/audio/transcriptions", "POST", 200, "whisper", elapsed)
 

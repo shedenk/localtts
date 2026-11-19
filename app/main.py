@@ -16,7 +16,7 @@ from app.auth import is_ui_authenticated
 from app.config import get_settings
 from app.core.job_worker import job_worker_loop
 from app.core.manager import get_manager, idle_cleanup_loop
-from app.db import init_db
+from app.db import cleanup_stale_jobs_on_startup, init_db
 
 WEB_DIR = Path(__file__).resolve().parent.parent / "web"
 
@@ -25,6 +25,7 @@ WEB_DIR = Path(__file__).resolve().parent.parent / "web"
 async def lifespan(app: FastAPI):
     get_settings().ensure_dirs()
     init_db()
+    cleanup_stale_jobs_on_startup()
     get_manager()
 
     stop_event = asyncio.Event()

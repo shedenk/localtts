@@ -28,9 +28,11 @@ from app.db import (
     delete_generations_bulk,
     delete_voice_clone,
     get_generation,
+    get_history_stats,
     get_stats,
     get_voice_clone,
     list_generations,
+    list_unified_history,
     list_voice_clones,
 )
 
@@ -339,6 +341,9 @@ async def studio_tts_generate(
         duration_sec=duration,
         process_sec=elapsed,
         rtf=rtf,
+        source="ui",
+        status="completed",
+        progress=100,
     )
 
     return {
@@ -426,6 +431,9 @@ async def studio_stt_transcribe(
         duration_sec=res.duration_sec,
         process_sec=elapsed,
         rtf=rtf,
+        source="ui",
+        status="completed",
+        progress=100,
     )
 
     return {
@@ -444,10 +452,13 @@ def history_list(limit: int = 10, page: int = 1, kind: Optional[str] = None):
     page = max(1, page)
     limit = max(1, min(100, limit))
     offset = (page - 1) * limit
-    total = count_generations(kind=kind)
+    stats = get_history_stats(kind=kind)
+    items = list_unified_history(limit=limit, offset=offset, kind=kind)
+    total = stats["total"]
     return {
-        "items": list_generations(limit=limit, offset=offset, kind=kind),
+        "items": items,
         "total": total,
+        "stats": stats,
         "page": page,
         "limit": limit,
         "total_pages": max(1, (total + limit - 1) // limit),
@@ -457,15 +468,11 @@ def history_list(limit: int = 10, page: int = 1, kind: Optional[str] = None):
 @router.post("/history/bulk-delete")
 def history_bulk_delete(payload: dict):
     raw_ids = payload.get("ids") or []
-    try:
-        ids = [int(x) for x in raw_ids]
-    except (TypeError, ValueError) as exc:
-        raise HTTPException(status_code=400, detail="Invalid ids list.") from exc
     kind = payload.get("kind")
     if kind is not None and kind not in ("tts", "stt"):
         raise HTTPException(status_code=400, detail="Invalid kind.")
     delete_all = bool(payload.get("all", False))
-    rows = delete_generations_bulk(ids=ids, kind=kind, delete_all=delete_all)
+    rows = delete_generations_bulk(ids=raw_ids, kind=kind, delete_all=delete_all)
     out_dir = get_settings().outputs_path
     for row in rows:
         if row.get("audio_filename"):
@@ -488,7 +495,7 @@ def history_audio(gen_id: int):
 
 
 @router.delete("/history/{gen_id}")
-def history_delete(gen_id: int):
+def history_delete(gen_id: str):
     row = delete_generation(gen_id)
     if not row:
         raise HTTPException(status_code=404, detail="History item not found.")

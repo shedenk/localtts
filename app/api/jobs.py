@@ -60,7 +60,19 @@ async def enqueue_speech_job(req: AsyncSpeechRequest):
 
     webhook = _validate_webhook(req.webhook_url)
     job_id = f"job_{uuid.uuid4().hex[:12]}"
-    create_job(job_id, "tts", webhook_url=webhook)
+    est_sec = max(1.5, round(len(req.input) / 25.0, 1))
+    create_job(
+        job_id,
+        "tts",
+        webhook_url=webhook,
+        source="api",
+        engine=req.model,
+        model=req.model,
+        voice=req.voice,
+        language=req.language,
+        input_text=req.input,
+        estimated_seconds=est_sec,
+    )
 
     await get_job_queue().put(
         {
@@ -136,7 +148,17 @@ async def enqueue_transcription_job(
         source_label = file_url.strip()
 
     job_id = f"job_{uuid.uuid4().hex[:12]}"
-    create_job(job_id, "stt", webhook_url=webhook)
+    create_job(
+        job_id,
+        "stt",
+        webhook_url=webhook,
+        source="api",
+        engine="whisper",
+        model=model_size,
+        language=language or "auto",
+        input_text=source_label,
+        estimated_seconds=5.0,
+    )
 
     await get_job_queue().put(
         {

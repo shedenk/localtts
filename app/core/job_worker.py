@@ -81,6 +81,9 @@ async def _process_tts_job(task: dict[str, Any]) -> None:
         duration_sec=duration,
         process_sec=elapsed,
         rtf=rtf,
+        source=task.get("source", "api"),
+        status="completed",
+        progress=100,
     )
     log_api_call("/v1/jobs/speech", "POST", 200, engine.name, elapsed)
 
@@ -144,6 +147,9 @@ async def _process_stt_job(task: dict[str, Any]) -> None:
         duration_sec=res.duration_sec,
         process_sec=elapsed,
         rtf=rtf,
+        source=task.get("source", "api"),
+        status="completed",
+        progress=100,
     )
     log_api_call("/v1/jobs/transcriptions", "POST", 200, "whisper", elapsed)
 
