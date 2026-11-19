@@ -650,6 +650,32 @@
     </button>
   </footer>
 
+  <!-- Delete Confirmation Dialog -->
+  <div x-show="confirmModal.open" x-transition.opacity
+    class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+    style="display: none;">
+    <div @click.outside="confirmModal.open = false"
+      class="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4 shadow-2xl">
+      <div class="flex items-start gap-3">
+        <div class="w-9 h-9 rounded-xl bg-rose-950 border border-rose-800/70 flex items-center justify-center text-rose-400 shrink-0">⚠️</div>
+        <div>
+          <h3 class="text-sm font-semibold text-slate-100" x-text="confirmModal.title"></h3>
+          <p class="text-xs text-slate-400 mt-1" x-text="confirmModal.message"></p>
+        </div>
+      </div>
+      <div class="flex justify-end gap-2 pt-1">
+        <button type="button" @click="confirmModal.open = false"
+          class="px-3.5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-200 transition">
+          Batal
+        </button>
+        <button type="button" @click="runConfirm()"
+          class="px-3.5 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-xs font-medium text-white transition">
+          Ya, Hapus
+        </button>
+      </div>
+    </div>
+  </div>
+
   <script>
     function app() {
       return {
@@ -660,6 +686,7 @@
         ttsHist: { items: [], page: 1, total: 0, total_pages: 1, selected: [] },
         sttHist: { items: [], page: 1, total: 0, total_pages: 1, selected: [] },
         toast: { msg: '', type: 'ok' },
+        confirmModal: { open: false, title: '', message: '', onConfirm: null },
         tts: {
           engine: 'kokoro',
           voice: 'af_heart',
@@ -850,34 +877,60 @@
           const st = this.histState(kind);
           st.selected = checked ? st.items.map(i => i.id) : [];
         },
-        async deleteHistoryItem(kind, id) {
-          await fetch(`/api/history/${id}`, { method: 'DELETE' });
-          await this.loadHistory(kind);
-          await this.loadSystem();
+        askConfirm(title, message, onConfirm) {
+          this.confirmModal = { open: true, title, message, onConfirm };
         },
-        async deleteSelected(kind) {
+        async runConfirm() {
+          const fn = this.confirmModal.onConfirm;
+          this.confirmModal.open = false;
+          if (fn) await fn();
+        },
+        deleteHistoryItem(kind, id) {
+          this.askConfirm(
+            'Hapus Riwayat',
+            'Yakin ingin menghapus item riwayat ini? File audio terkait juga akan dihapus.',
+            async () => {
+              await fetch(`/api/history/${id}`, { method: 'DELETE' });
+              this.notify('Riwayat dihapus.');
+              await this.loadHistory(kind);
+              await this.loadSystem();
+            }
+          );
+        },
+        deleteSelected(kind) {
           const st = this.histState(kind);
           if (!st.selected.length) return;
-          await fetch('/api/history/bulk-delete', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ids: st.selected }),
-          });
-          this.notify(`${st.selected.length} riwayat dihapus.`);
-          await this.loadHistory(kind);
-          await this.loadSystem();
+          this.askConfirm(
+            'Hapus Riwayat Terpilih',
+            `Yakin ingin menghapus ${st.selected.length} riwayat yang dipilih?`,
+            async () => {
+              await fetch('/api/history/bulk-delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ids: st.selected }),
+              });
+              this.notify(`${st.selected.length} riwayat dihapus.`);
+              await this.loadHistory(kind);
+              await this.loadSystem();
+            }
+          );
         },
-        async deleteAll(kind) {
-          if (!confirm(`Hapus semua riwayat ${kind.toUpperCase()}?`)) return;
-          await fetch('/api/history/bulk-delete', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ kind, all: true }),
-          });
-          this.histState(kind).page = 1;
-          this.notify(`Semua riwayat ${kind.toUpperCase()} dihapus.`);
-          await this.loadHistory(kind);
-          await this.loadSystem();
+        deleteAll(kind) {
+          this.askConfirm(
+            `Hapus Semua Riwayat ${kind.toUpperCase()}`,
+            `Semua riwayat ${kind.toUpperCase()} dan file audionya akan dihapus permanen. Lanjutkan?`,
+            async () => {
+              await fetch('/api/history/bulk-delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ kind, all: true }),
+              });
+              this.histState(kind).page = 1;
+              this.notify(`Semua riwayat ${kind.toUpperCase()} dihapus.`);
+              await this.loadHistory(kind);
+              await this.loadSystem();
+            }
+          );
         },
         async loadClones() {
           const res = await fetch('/api/clones');
@@ -895,9 +948,16 @@
           await this.loadClones();
           this.notify('Voice clone sample saved!');
         },
-        async deleteClone(id) {
-          await fetch(`/api/clones/${id}`, { method: 'DELETE' });
-          await this.loadClones();
+        deleteClone(id) {
+          this.askConfirm(
+            'Hapus Voice Clone',
+            'Yakin ingin menghapus sample voice clone ini?',
+            async () => {
+              await fetch(`/api/clones/${id}`, { method: 'DELETE' });
+              this.notify('Voice clone dihapus.');
+              await this.loadClones();
+            }
+          );
         },
         async loadEngine(name) {
           this.notify(`Loading ${name}...`);
