@@ -1,66 +1,143 @@
 # LocalTTS
 
-Self-hosted **Text-to-Speech (TTS)** & **Speech-to-Text (STT)** hub dengan antarmuka web sederhana, **OpenAI-compatible API**, riwayat **SQLite**, deteksi hardware otomatis (`CUDA` / `Apple MPS` / `CPU`), dan autentikasi berbasis `.env`.
+> **All-in-One Voice AI Hub:** Mengumpulkan berbagai aplikasi dan engine Text-to-Speech (TTS) serta Speech-to-Text (STT) open-source terbaik ke dalam **1 antarmuka web terpadu (Modern Web UI)** dan **1 standar OpenAI-compatible REST API** untuk mempermudah penggunaan dan integrasi.
 
-Fokus pada **Bahasa Inggris (`en`)** dan **Bahasa Indonesia (`id`)**, lengkap dengan filter gender (`Female` / `Male`) serta **tombol preview sample pendek** di setiap suara.
-
----
-
-## Fitur Utama
-
-- **Multi-Engine TTS & STT dalam 1 Service:**
-  - **[Kokoro-82M (`kokoro-onnx`)](https://github.com/thewh1teagle/kokoro-onnx):** Ringan, cepat di CPU/macOS/VPS, kualitas natural untuk Bahasa Inggris.
-  - **[Edge-TTS (`rany2/edge-tts`)](https://github.com/rany2/edge-tts):** Suara neural gratis untuk Bahasa Indonesia & Inggris dengan beban CPU/RAM hampir nol.
-  - **[OmniVoice (`k2-fsa/OmniVoice`)](https://github.com/k2-fsa/OmniVoice):** Mendukung Bahasa Indonesia & Inggris, *zero-shot voice cloning*, dan *voice design*.
-  - **[Qwen3-TTS (`QwenLM/Qwen3-TTS`)](https://github.com/QwenLM/Qwen3-TTS):** TTS ekspresif dengan *voice cloning* 3 detik & kontrol instruksi.
-  - **[Faster-Whisper](https://github.com/SYSTRAN/faster-whisper):** Transkripsi audio/video (STT) via upload file (`MP3`, `AAC`, `WAV`, `M4A`, dll) atau **URL (`file_url`)** dengan download hasil **TXT / CSV / SRT**.
-- **UI Sederhana & Informatif (5 Tab):**
-  - **🔊 TTS Studio:** Layout 2-kolom dengan kartu pilihan suara (badge **Gender** & **Bahasa**, tombol **▶ Sample** bawaan di `web/samples/`), *Voice Cloning*, serta **TTS History** langsung di bawahnya (highlight `✨ NEW` untuk hasil terbaru, **👁 Lihat** teks, **⬇ Download**, checkbox select/hapus/pagination).
-  - **📝 Whisper STT:** Upload file atau masukkan URL audio/video, download hasil **TXT / CSV / SRT**, serta **Whisper STT History** di bawahnya (**👁 Lihat**, **Copy**, **⬇ TXT/CSV**, select/hapus/pagination).
-  - **🎭 Voice Clones:** Kelola sample audio referensi untuk *voice cloning*.
-  - **⚡ API Docs:** Dokumentasi interaktif dengan contoh **cURL, Python, JavaScript, PHP, dan Go** (otomatis terisi `API_KEY` aktif).
-  - **🖥️ System & Credits:** Monitor RAM/CPU/GPU (`CUDA` / `MPS` / `CPU`), Load/Unload model, tombol **⬇ Install from UI** untuk OmniVoice & Qwen3-TTS sesuai spek perangkat, dan daftar sumber open-source.
-- **Manajemen Memori Otomatis:** *Lazy-load* saat dipakai dan *auto-unload* setelah idle (`IDLE_UNLOAD_SECONDS`).
-- **SQLite Database:** Menyimpan riwayat generasi TTS/STT, sample *voice clone*, dan log API di `data/tts_local.db`.
-- **Keamanan `.env` Only (Tanpa Setup DB User):**
-  - Login UI menggunakan `AUTH_USERNAME` & `AUTH_PASSWORD` (kosongkan jika ingin tanpa login).
-  - API menggunakan `API_KEY` via header `Authorization: Bearer` atau `X-API-Key` (kosongkan jika API ingin terbuka tanpa header).
-- **OpenAI-Compatible API & Async Job Queue:** Siap dihubungkan ke **OpenWebUI**, **n8n**, **LangChain**, atau **OpenAI SDK**, serta menyediakan `/v1/jobs/*` dengan nomor antrian, progress `0–100%`, dan notifikasi **Webhook** (`WEBHOOK_URL` di `.env` atau per-request).
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python 3.11+](https://img.shields.io/badge/Python-3.11%20%7C%203.12-green.svg)](https://python.org)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688.svg)](https://fastapi.tiangolo.com)
+[![Docker Ready](https://img.shields.io/badge/Docker-Ready-2496ED.svg)](https://docker.com)
+[![Coolify Ready](https://img.shields.io/badge/Coolify-Verified-6366F1.svg)](https://coolify.io)
+[![Release](https://img.shields.io/badge/Release-v0.1.0-orange.svg)](https://github.com/shedenk/localtts/releases)
 
 ---
 
-## Spesifikasi Minimum
+## 💡 About LocalTTS (Tentang Proyek)
+
+### Mengapa LocalTTS Dibuat?
+Di era perkembangan AI saat ini, komunitas open-source telah melahirkan banyak sekali model suara yang luar biasa:
+- **Kokoro-82M** yang sangat cepat di CPU biasa.
+- **Edge-TTS** yang menyediakan suara Bahasa Indonesia dan Inggris yang sangat natural dengan beban RAM mendekati nol.
+- **OmniVoice** dan **Qwen3-TTS** yang mampu melakukan *zero-shot voice cloning* (meniru suara hanya dari audio 3 detik).
+- **Faster-Whisper** yang menjadi standar emas untuk transkripsi audio ke teks secara offline.
+
+Namun, menjalankan dan mengintegrasikan model-model tersebut secara terpisah sangat merepotkan:
+1. **Konflik Dependency:** Masing-masing engine memerlukan versi pustaka yang berbeda (misalnya perbedaan versi `transformers` dan `torch`).
+2. **Tanpa Antarmuka Terpadu:** Pengguna harus menjalankan skrip Python atau CLI yang berbeda untuk tiap model.
+3. **Format API Terpecah:** Tidak adanya format API standar yang kompatibel dengan aplikasi modern seperti OpenWebUI, n8n, LangChain, atau OpenAI SDK.
+
+### Solusi LocalTTS
+**LocalTTS menyatukan semuanya menjadi satu solusi yang rapi dan mudah:**
+- **Satu Antarmuka Web (UI Studio):** Kelola teks, dengarkan preview sampel suara, filter suara berdasarkan gender/bahasa, unggah audio transkripsi, serta pantau riwayat dengan *live progress bar* dan estimasi waktu selesai.
+- **Satu REST API Standar OpenAI:** Endpoint `/v1/audio/speech` dan `/v1/audio/transcriptions` siap pakai untuk menggantikan API OpenAI berbayar dengan model lokal tanpa mengubah kode aplikasi klien Anda.
+- **Async Job Queue & Webhook:** Menyediakan antrean background `/v1/jobs/*` dengan nomor antrian, persentase progress, dan webhook callback otomatis saat proses selesai.
+- **Manajemen Memori Pintar:** Fitur *lazy-loading* (hanya memuat model saat diminta) dan *auto-unload* (mengosongkan RAM/VRAM saat idle) sehingga server hemat daya dan tidak boros memori.
+- **100% Self-Hosted & Privasi:** Semua proses dijalankan di server atau komputer Anda sendiri. Data teks dan rekaman suara Anda tidak pernah dikirim ke pihak ketiga.
+
+---
+
+## 📸 Tangkapan Layar UI/UX (Screenshots)
+
+Berikut adalah tampilan antarmuka web LocalTTS yang modern, responsif, dan dirancang untuk kenyamanan pengguna:
+
+### 1. 🔊 TTS Studio & Live History
+> Pilih engine, filter gender & bahasa, preview sampel suara pendek, generate audio, dan pantau riwayat generasi secara realtime lengkap dengan badge asal pembuatan (`⚡ API` vs `🖥️ UI`), live progress bar, serta jam mulai dan perkiraan selesai.
+
+![TTS Studio](docs/screenshots/01_tts_studio.png)
+
+---
+
+### 2. 📝 Whisper Speech-to-Text
+> Unggah file rekaman (MP3/WAV/AAC/M4A) atau masukkan link URL audio/video. Hasil transkripsi langsung tampil lengkap dengan timestamp segment dan tombol unduh format **TXT, CSV, atau SRT**.
+
+![Whisper STT](docs/screenshots/02_whisper_stt.png)
+
+---
+
+### 3. 🎭 Voice Clones Library
+> Simpan dan kelola sampel audio referensi (3–10 detik) untuk digunakan pada *zero-shot voice cloning* di OmniVoice atau Qwen3-TTS.
+
+![Voice Clones](docs/screenshots/03_voice_clones.png)
+
+---
+
+### 4. ⚡ OpenAI-Compatible API Docs
+> Dokumentasi interaktif bawaan lengkap dengan contoh kode siap pakai dalam **cURL, Python, JavaScript / Node.js, PHP, dan Go**, terisi otomatis dengan `API_KEY` aktif.
+
+![API Docs](docs/screenshots/04_api_docs.png)
+
+---
+
+### 5. 🖥️ System & Hardware Monitor
+> Pantau penggunaan CPU, RAM, GPU (`CUDA` / `Apple MPS`), kelola pemuatan model ke RAM secara manual atau otomatis, tombol instalasi engine tambahan, serta penampil dokumen `README.md`.
+
+![System Info](docs/screenshots/05_system_info.png)
+
+---
+
+### 6. 🔐 Halaman Login Dark Mode
+> Autentikasi sesi aman berbasis token HMAC bertanda tangan waktu (*URL-safe timed serializer*) tanpa memerlukan konfigurasi database pengguna yang rumit.
+
+![Login Page](docs/screenshots/ui_login.png)
+
+---
+
+## 🚀 Fitur Unggulan
+
+- **Multi-Engine dalam 1 Service:**
+  - **[Kokoro-82M (`kokoro-onnx`)](https://github.com/thewh1teagle/kokoro-onnx):** Ringan, super cepat di CPU biasa / VPS, kualitas natural untuk Bahasa Inggris.
+  - **[Edge-TTS (`rany2/edge-tts`)](https://github.com/rany2/edge-tts):** Suara neural gratis untuk Bahasa Indonesia (Gadis & Ardi) dan Inggris dengan beban CPU/RAM hampir nol.
+  - **[OmniVoice (`k2-fsa/OmniVoice`)](https://github.com/k2-fsa/OmniVoice):** Suara ekspresif Indonesia & Inggris, *zero-shot voice cloning*, dan kontrol emosi / *voice design*.
+  - **[Qwen3-TTS (`QwenLM/Qwen3-TTS`)](https://github.com/QwenLM/Qwen3-TTS):** TTS canggih dengan *voice cloning* 3 detik dan instruksi gaya berbicara.
+  - **[Faster-Whisper](https://github.com/SYSTRAN/faster-whisper):** Transkripsi audio offline akurat dari file atau URL dengan ekspor format **TXT / CSV / SRT**.
+- **Riwayat Terpadu (History Tracking):**
+  - **Counter Header:** Total, Proses/Queue (*dengan indikator lampu berkedip*), Success, dan Failed.
+  - **Badge Sumber:** Menampilkan apakah data dibuat melalui `⚡ API` atau `🖥️ UI`.
+  - **Progress Realtime:** Menampilkan persentase progress dan *live progress bar* untuk tugas yang sedang antre/berjalan.
+  - **Waktu Lengkap:** Menampilkan **Jam Mulai**, **Perkiraan Selesai** (saat antre), atau **Waktu Selesai Aktual** beserta durasi dan nilai RTF.
+- **Sistem Notifikasi Pintar (Floating Toast):**
+  - Notifikasi melayang saat proses dimulai di UI (*"Sedang diproses... Mohon tunggu."*).
+  - Notifikasi saat proses selesai (*"Proses selesai! Audio berhasil dibuat."*).
+  - Auto-polling yang mendeteksi saat semua antrean background selesai (*"Semua antrean selesai diproses!"*).
+- **Keamanan Sederhana Berbasis `.env`:**
+  - Proteksi Web UI via `AUTH_USERNAME` dan `AUTH_PASSWORD`.
+  - Proteksi API via `API_KEY` (mendukung `Authorization: Bearer <KEY>` dan `X-API-Key: <KEY>`).
+- **Penyimpanan Lokal Mandiri:**
+  - Database **SQLite WAL** tersimpan rapi di `data/tts_local.db`.
+  - File output audio disimpan di folder `data/outputs/`.
+
+---
+
+## 💻 Spesifikasi Sistem
 
 | Mode | CPU | RAM | Storage | GPU |
 | :--- | :--- | :--- | :--- | :--- |
-| **Mode Standar (Default)**<br>*(Edge-TTS, Kokoro-82M, Whisper `tiny`/`base`)* | 1–2 vCPU | **1–2 GB** | 2–3 GB | Tidak perlu (CPU only) |
+| **Mode Standar (Default)**<br>*(Edge-TTS, Kokoro-82M, Faster-Whisper `tiny`/`base`)* | 1–2 vCPU | **1–2 GB** | 2–3 GB | Tidak perlu (CPU Only) |
 | **Mode Lengkap (`--all` / Install dari UI)**<br>*(+ OmniVoice & Qwen3-TTS)* | 4+ vCPU / Apple Silicon | **8–16 GB** | 15–25 GB | Opsional (NVIDIA VRAM ≥ 6–8 GB atau Apple MPS) |
 
-> **Catatan:** Model dimuat secara *lazy-load* dan otomatis di-unload saat idle (`IDLE_UNLOAD_SECONDS=300`) agar hemat RAM/VRAM.
+> **Hemat RAM:** Model dimuat secara *lazy-load* saat pertama kali dipanggil dan otomatis dikeluarkan dari RAM setelah tidak digunakan selama waktu tertentu (`IDLE_UNLOAD_SECONDS=300`).
 
 ---
 
-## Instalasi & Menjalankan
+## 🛠️ Panduan Instalasi & Menjalankan
 
 ### 1. macOS (Apple Silicon / Intel)
-
-> Disarankan menjalankan langsung secara native (bukan Docker) agar PyTorch dapat memanfaatkan akselerasi **Apple Silicon MPS**.
+> Disarankan menjalankan native agar PyTorch dapat menggunakan akselerasi **Apple Silicon GPU (MPS)**.
 
 ```bash
 git clone https://github.com/shedenk/localtts.git
 cd localtts
 chmod +x scripts/setup-mac.sh scripts/run-mac.sh
 
-# Install standar (ringan: Kokoro, Edge-TTS, Faster-Whisper) — OmniVoice & Qwen3-TTS bisa diinstall dari UI nanti
+# Install mode standar (Kokoro, Edge-TTS, Faster-Whisper)
 ./scripts/setup-mac.sh
 
-# (Opsional) Install semua engine sekaligus dari CLI:
+# (Opsional) Install semua engine sekaligus:
 # ./scripts/setup-mac.sh --all
 
 # Jalankan server
 ./scripts/run-mac.sh
 ```
-Buka `http://localhost:8000` (login default di `.env`: `admin` / `changeme123`).
+Buka browser di `http://localhost:8000` (Login default: `admin` / `changeme123`).
 
 ---
 
@@ -71,7 +148,7 @@ git clone https://github.com/shedenk/localtts.git
 cd localtts
 chmod +x scripts/setup-linux.sh
 
-# Install standar (atau tambah --all untuk langsung install OmniVoice & Qwen3-TTS)
+# Install mode standar
 ./scripts/setup-linux.sh
 
 # Jalankan server
@@ -81,14 +158,13 @@ chmod +x scripts/setup-linux.sh
 ---
 
 ### 3. Windows (PowerShell)
-
 > Pastikan `ffmpeg` sudah terpasang (`winget install Gyan.FFmpeg`).
 
 ```powershell
 git clone https://github.com/shedenk/localtts.git
 cd localtts
 
-# Install standar (atau tambah --all untuk langsung install OmniVoice & Qwen3-TTS)
+# Install mode standar
 .\scripts\setup-win.ps1
 
 # Jalankan server
@@ -104,148 +180,126 @@ git clone https://github.com/shedenk/localtts.git
 cd localtts
 cp .env.example .env
 
-# Jalankan (build standar ringan: Kokoro, Edge-TTS, Faster-Whisper + volume persistent)
+# Jalankan container
 docker compose up -d --build
 ```
-Untuk langsung menginstal OmniVoice & Qwen3-TTS saat build Docker, set `INSTALL_ALL_ENGINES=true` di `.env` atau environment panel (butuh RAM ≥ 8 GB / GPU). Anda juga bisa menginstallnya belakangan langsung dari tab **🖥️ System & Credits** di UI.
 
 ---
 
-### 5. Deploy di Panel Populer (Coolify, Dokploy, Portainer, EasyPanel)
+### 5. Deploy di Panel Cloud (Coolify, Dokploy, Portainer, EasyPanel)
 
 #### **Coolify**
-1. Pilih **New Resource → Public/Private Repository** → masukkan URL repo GitHub ini.
-2. Pilih **Build Pack: Docker Compose**, lalu isi **Docker Compose Location** dengan `docker-compose.coolify.yaml` (file khusus Coolify dengan `expose`, `healthcheck`, dan `SERVICE_FQDN_LOCALTTS`).
-3. Di menu **Environment Variables**, atur:
+1. Pilih **New Resource → Public/Private Repository** → masukkan URL repository ini.
+2. Pilih **Build Pack: Docker Compose**, lalu tentukan **Docker Compose Location** ke `docker-compose.coolify.yaml`.
+3. Di tab **Environment Variables**, isi konfigurasi:
    - `AUTH_USERNAME=admin`
-   - `AUTH_PASSWORD=password_kuat_anda`
-   - `SESSION_SECRET=random_string_panjang`
-   - `API_KEY=` *(kosongkan jika API tanpa header, atau isi dengan secret key Anda)*
-   - `INSTALL_ALL_ENGINES=false` *(default `false` untuk build cepat & ringan; set `true` jika VPS RAM ≥ 8 GB / GPU, atau install dari UI nanti)*
-4. Pastikan **Persistent Storage** untuk `/app/data` (SQLite + hasil audio) dan `/app/models` (cache model) aktif (sudah terkonfigurasi di `docker-compose.yml`).
-5. Klik **Deploy** dan arahkan domain Anda ke port `8000`.
-
-#### **Dokploy / EasyPanel / Portainer**
-- **Dokploy:** Buat **Compose Service** dari repo GitHub, isi environment variables di tab *Environment*, lalu *Deploy*.
-- **Portainer:** Masuk ke **Stacks → Add stack → Repository**, pilih `docker-compose.yml`, isi environment variables, lalu **Deploy the stack**.
-- **EasyPanel:** Buat **App** dari GitHub dengan **Dockerfile**, tambahkan *Mounts* ke `/app/data` dan `/app/models`, set port `8000`, dan isi environment variables.
+   - `AUTH_PASSWORD=password_pilihan_anda`
+   - `SESSION_SECRET=kunci_rahasia_acak_panjang`
+   - `API_KEY=` *(kosongkan jika API ingin terbuka, atau isi secret key)*
+   - `INSTALL_ALL_ENGINES=false` *(default ringan; set `true` jika server memiliki RAM ≥ 8 GB / GPU)*
+4. Pastikan volume persistent terpasang untuk `/app/data` dan `/app/models` (sudah otomatis ada di file compose).
+5. Klik **Deploy**.
 
 ---
 
-## Konfigurasi Environment (`.env`)
+## ⚙️ Konfigurasi Environment (`.env`)
 
 | Variable | Default | Keterangan |
 | :--- | :--- | :--- |
 | `PORT` | `8000` | Port server HTTP |
-| `AUTH_USERNAME` | `admin` | Username login UI (kosongkan untuk menonaktifkan login UI) |
-| `AUTH_PASSWORD` | `changeme123` | Password login UI (kosongkan untuk menonaktifkan login UI) |
-| `SESSION_SECRET` | `...` | Secret key untuk cookie session UI |
-| `API_KEY` | *(kosong)* | Jika kosong, API `/v1/*` terbuka; jika diisi, wajib kirim Bearer / `X-API-Key` |
-| `API_KEY_HEADER` | `X-API-Key` | Nama header kustom alternatif selain `Authorization: Bearer` |
+| `AUTH_USERNAME` | `admin` | Username login UI (kosongkan jika tanpa login) |
+| `AUTH_PASSWORD` | `changeme123` | Password login UI (kosongkan jika tanpa login) |
+| `SESSION_SECRET` | `...` | Kunci enkripsi cookie session UI |
+| `API_KEY` | *(kosong)* | Kunci autentikasi API `/v1/*` (kosong = publik tanpa header) |
+| `API_KEY_HEADER` | `X-API-Key` | Header kustom selain `Authorization: Bearer` |
 | `DEVICE` | `auto` | `auto` \| `cuda` \| `mps` \| `cpu` |
-| `ENABLED_ENGINES` | `kokoro,edge,whisper,omnivoice,qwen3` | Daftar engine yang diaktifkan |
-| `IDLE_UNLOAD_SECONDS` | `300` | Otomatis unload model dari RAM setelah idle (detik). `0` = nonaktif |
-| `TTS_MAX_CHARS` | `5000` | Batas maksimal karakter teks untuk TTS (`0` = tanpa batas) |
-| `STT_MAX_FILE_MB` | `50` | Batas maksimal ukuran file audio/video (MB) untuk transkrip STT (`0` = tanpa batas) |
-| `WEBHOOK_URL` | *(kosong)* | Default URL webhook untuk notifikasi *async job* (`/v1/jobs/*`) saat selesai |
-| `ALLOW_LOCAL_URLS` | `true` | Izinkan `localhost`/`127.0.0.1` pada `file_url` & `webhook_url` (set `false` di VPS publik ketat) |
+| `ENABLED_ENGINES` | `kokoro,edge,whisper,omnivoice,qwen3` | Daftar engine yang aktif |
+| `IDLE_UNLOAD_SECONDS` | `300` | Detik idle sebelum model otomatis di-unload dari RAM (`0` = nonaktif) |
+| `TTS_MAX_CHARS` | `5000` | Batas karakter teks TTS per request (`0` = tanpa batas) |
+| `STT_MAX_FILE_MB` | `50` | Batas ukuran file audio/video STT dalam MB (`0` = tanpa batas) |
+| `WEBHOOK_URL` | *(kosong)* | Default URL webhook saat async job selesai |
+| `ALLOW_LOCAL_URLS` | `true` | Izinkan alamat lokal `127.0.0.1` pada webhook & URL audio |
 
 ---
 
-## Dokumentasi API
+## 📡 OpenAI-Compatible API
 
-LocalTTS menyediakan endpoint **OpenAI-compatible (`/v1/audio/*`)** serta **Async Job Queue (`/v1/jobs/*`)** dengan progress tracking (`0–100%`), nomor antrian, dan **Webhook**.
-
-### Autentikasi API
-- Jika `API_KEY` di `.env` **kosong**: semua endpoint `/v1/*` terbuka tanpa header.
-- Jika `API_KEY` **diisi** (misal `API_KEY=apikey123`): kirim salah satu header berikut:
-  - `Authorization: Bearer apikey123`
-  - `X-API-Key: apikey123`
-
-### Daftar Endpoint Utama
-
-| Method | Endpoint | Keterangan |
-| :--- | :--- | :--- |
-| `GET` | `/v1/models` | Daftar engine yang siap dipakai (`kokoro`, `edge`, `omnivoice`, `qwen3`, `whisper`) |
-| `POST` | `/v1/audio/speech` | Text-to-Speech langsung (mengembalikan binary audio `mp3`/`wav`/`opus`/`flac`) |
-| `POST` | `/v1/audio/transcriptions` | Whisper STT langsung (upload `file` atau `file_url`, output `json`/`text`/`srt`/`verbose_json`) |
-| `POST` | `/v1/jobs/speech` | Async Queue TTS (mengembalikan `202` + `job_id` + `queue_position`, mendukung `webhook_url`) |
-| `POST` | `/v1/jobs/transcriptions` | Async Queue STT (`file` / `file_url` + opsional `webhook_url`) |
-| `GET` | `/v1/jobs/{job_id}` | Cek status (`queued`/`processing`/`completed`/`failed`), `progress`, `stage`, & `queue_position` |
-| `GET` | `/v1/jobs/{job_id}/result` | Ambil file audio TTS atau hasil transkrip STT setelah `status == "completed"` |
-| `GET` | `/health` | Healthcheck server (`{"status": "ok"}`, tanpa auth) |
-
-### Contoh Request & Response
-
-#### 1. Text-to-Speech (`POST /v1/audio/speech`)
+### 1. Text-to-Speech (`POST /v1/audio/speech`)
 ```bash
 curl -X POST http://localhost:8000/v1/audio/speech \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer apikey123" \
-  -d '{"model":"edge","input":"Halo dari server LocalTTS!","voice":"id-ID-GadisNeural","language":"id","response_format":"mp3"}' \
-  --output halo.mp3
+  -d '{
+    "model": "edge",
+    "input": "Selamat pagi dunia, hari ini adalah hari paling indah, selamat beraktifitas.",
+    "voice": "id-ID-GadisNeural",
+    "language": "id",
+    "response_format": "mp3"
+  }' \
+  --output selamat_pagi.mp3
 ```
-**Response (`200 OK`):** Binary audio (`Content-Type: audio/mpeg`) beserta header `X-Process-Seconds` dan `X-Audio-Duration`.
 
-#### 2. Whisper STT (`POST /v1/audio/transcriptions`)
+### 2. Speech-to-Text Whisper (`POST /v1/audio/transcriptions`)
 ```bash
-# Upload file langsung (MP3/AAC/WAV/M4A) atau pakai file_url
 curl -X POST http://localhost:8000/v1/audio/transcriptions \
   -H "Authorization: Bearer apikey123" \
   -F "file=@audio.mp3" \
   -F "model=base" \
   -F "language=id" \
-  -F "response_format=verbose_json"
-```
-**Response (`200 OK`):**
-```json
-{
-  "text": "Halo dari server LocalTTS.",
-  "language": "id",
-  "duration": 2.4,
-  "segments": [{"id": 1, "start": 0.0, "end": 2.4, "text": "Halo dari server LocalTTS."}],
-  "process_sec": 0.62
-}
+  -F "response_format=json"
 ```
 
-#### 3. Async Job Queue, Progress & Webhook (`POST /v1/jobs/speech`)
+### 3. Async Job Queue (`POST /v1/jobs/speech`)
 ```bash
-# 1. Enqueue job (webhook_url opsional, default pakai WEBHOOK_URL di .env)
+# 1. Masukkan job ke antrean
 curl -X POST http://localhost:8000/v1/jobs/speech \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer apikey123" \
-  -d '{"model":"omnivoice","input":"Teks panjang...","voice":"id_female","language":"id","webhook_url":"https://webhook.site/id"}'
+  -d '{"model":"edge","input":"Teks panjang...","voice":"id-ID-GadisNeural","webhook_url":"https://webhook.site/id"}'
+
+# 2. Cek progress & status
+curl http://localhost:8000/v1/jobs/JOB_ID -H "Authorization: Bearer apikey123"
+
+# 3. Unduh hasil setelah selesai
+curl http://localhost:8000/v1/jobs/JOB_ID/result -H "Authorization: Bearer apikey123" --output hasil.mp3
 ```
-**Response (`202 Accepted`):**
-```json
-{
-  "job_id": "job_133614501c17",
-  "kind": "tts",
-  "status": "queued",
-  "progress": 0,
-  "queue_position": 1,
-  "status_url": "/v1/jobs/job_133614501c17",
-  "result_url": "/v1/jobs/job_133614501c17/result"
-}
-```
-Cek progress via `GET /v1/jobs/job_133614501c17`, dan ambil hasil akhir via `GET /v1/jobs/job_133614501c17/result`. Jika `webhook_url` / `WEBHOOK_URL` diisi, server otomatis mengirim `POST` JSON berisi `job_id`, `status`, `progress`, `result`, dan `error` saat selesai.
-
-### Kode Error Umum & Keamanan URL
-- `400 Bad Request`: Parameter tidak valid / model tidak dikenal / URL bukan `http`/`https` / URL diblokir (alamat metadata `169.254.169.254` selalu diblokir; `127.0.0.1` diblokir jika `ALLOW_LOCAL_URLS=false`).
-- `401 Unauthorized`: `API_KEY` aktif di `.env` namun header `Authorization` / `X-API-Key` tidak valid atau kosong.
-- `404 Not Found`: `job_id` atau resource tidak ditemukan.
-- `413 Payload Too Large`: Teks melebihi `TTS_MAX_CHARS` atau file melebihi `STT_MAX_FILE_MB`.
-- `503 Service Unavailable`: Engine belum terinstall di server.
-
-> **Tips Docker Lokal:** Jika menjalankan LocalTTS di Docker dan ingin memanggil webhook yang berjalan di mesin host, gunakan `http://host.docker.internal:PORT/hook` (dengan `ALLOW_LOCAL_URLS=true`). Untuk VPS publik ketat, set `ALLOW_LOCAL_URLS=false` di `.env` / Coolify.
-
-Contoh lengkap untuk **Python, JavaScript/Node.js, PHP, dan Go** tersedia di **[docs/API.md](docs/API.md)** serta langsung di tab **⚡ API Docs** pada UI (bisa export ke `.md`, `.txt`, dan `.csv`).
 
 ---
 
-## Lisensi & Disclaimer Legalitas
+## 📦 Rilis Paket (Package Release)
 
-- **Kode Aplikasi:** Dirilis di bawah [MIT License](LICENSE).
-- **Merek Dagang:** LocalTTS adalah proyek independen dan tidak berafiliasi dengan OpenAI, Microsoft, atau Alibaba. Penyebutan *"OpenAI-compatible"* hanya merujuk pada kompatibilitas format API.
-- **Engine Pihak Ketiga:** Masing-masing engine mengikuti lisensinya sendiri (Kokoro-82M, Faster-Whisper, OmniVoice, Qwen3-TTS menggunakan lisensi permisif MIT/Apache-2.0). Khusus `edge-tts` menggunakan layanan online Microsoft Edge secara tidak resmi — gunakan hanya untuk pengujian/pribadi; untuk kebutuhan produksi/komersial, gunakan engine lokal offline (`kokoro`, `omnivoice`, atau `qwen3`).
-- **Voice Cloning:** Fitur *voice cloning* hanya boleh digunakan dengan suara milik sendiri atau atas izin eksplisit pemilik suara. Jangan gunakan untuk peniruan identitas tanpa izin.
+LocalTTS dirilis sebagai paket Python mandiri yang dapat di-build dan di-install menggunakan `pip` atau `uv`:
+
+### Build Distribusi Paket
+```bash
+# Menggunakan uv (sangat cepat):
+uv build
+
+# Menghasilkan:
+# dist/localtts-0.1.0-py3-none-any.whl (Wheel)
+# dist/localtts-0.1.0.tar.gz (Source Distribution)
+```
+
+### Instalasi dari Wheel
+```bash
+pip install dist/localtts-0.1.0-py3-none-any.whl
+```
+
+### Versi Rilis
+- **Tag:** `v0.1.0`
+- **Changelog:**
+  - Multi-engine TTS (Kokoro ONNX, Edge-TTS, OmniVoice, Qwen3-TTS) & Faster-Whisper STT.
+  - OpenAI-compatible REST API endpoints (`/v1/audio/speech`, `/v1/audio/transcriptions`).
+  - Async Job Queue worker dengan progress tracking dan webhook callback.
+  - UI Studio modern dengan Dark Mode, preview audio sample, dan tab manajemen hardware.
+  - Riwayat lengkap: indikator sumber (`⚡ API` vs `🖥️ UI`), live progress bar, jam mulai & perkiraan selesai, serta counter status header (Total, Queue, Success, Failed).
+  - Floating toast notifications untuk status pemrosesan dan penyelesaian antrean.
+
+---
+
+## 📄 Lisensi & Legalitas
+
+- **Lisensi Kode:** Seluruh kode aplikasi LocalTTS dirilis di bawah [MIT License](LICENSE).
+- **Merek Dagang:** LocalTTS adalah proyek independen open-source dan tidak berafiliasi dengan OpenAI, Microsoft, atau Alibaba.
+- **Engine Suara:** Seluruh engine yang digunakan mematuhi lisensi masing-masing (Kokoro-82M Apache-2.0, Faster-Whisper MIT, OmniVoice Apache-2.0, Qwen3-TTS Apache-2.0). Khusus `edge-tts` menggunakan layanan online publik Microsoft Edge — gunakan untuk pengujian dan kebutuhan non-komersial. Untuk kebutuhan produksi skala penuh, gunakan engine offline lokal (`kokoro`, `omnivoice`, atau `qwen3`).
+- **Voice Cloning:** Fitur peniruan suara (*voice cloning*) wajib digunakan secara etis hanya dengan suara pribadi atau atas izin tertulis dari pemilik suara.
