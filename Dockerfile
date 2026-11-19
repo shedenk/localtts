@@ -34,7 +34,7 @@ RUN uv venv /app/.venv && \
 
 COPY app ./app
 COPY web ./web
-COPY .env.example ./
+COPY README.md .env.example ./
 
 RUN mkdir -p /app/data /app/models
 

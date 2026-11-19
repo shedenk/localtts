@@ -61,6 +61,14 @@ def list_engines():
     return {"engines": get_manager().list_all()}
 
 
+@router.get("/readme")
+def get_readme():
+    readme_path = Path(__file__).resolve().parent.parent.parent / "README.md"
+    if not readme_path.exists():
+        return {"content": "# LocalTTS\n\nREADME.md not found."}
+    return {"content": readme_path.read_text(encoding="utf-8")}
+
+
 @router.get("/voices/sample")
 async def voice_sample(engine: str, voice: str, language: str = "en"):
     mgr = get_manager()
