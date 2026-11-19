@@ -284,14 +284,103 @@ curl http://localhost:8000/v1/jobs/JOB_ID/result \
 | Method | Endpoint | Keterangan |
 | :--- | :--- | :--- |
 | `GET` | `/health` | Healthcheck untuk Docker/Coolify (`{"status": "ok"}`) |
-| `GET` | `/api/system` | Info hardware (`CUDA`/`MPS`/`CPU`), RAM, statistik SQLite, & status engine |
+| `GET` | `/api/system` | Info hardware (`CUDA`/`MPS`/`CPU`), RAM, storage (total/used/free), statistik SQLite, & status engine |
+| `GET` | `/api/system/logs` | Log runtime sistem (parameter: `?level=ALL|INFO|WARNING|ERROR&limit=200`) |
+| `POST` | `/api/system/logs/clear` | Mengosongkan log sistem dari memori dan file |
+| `POST` | `/api/system/clean` | Memicu pembersihan storage manual (file audio lama > N hari & rotasi log) |
+| `GET` | `/api/settings` | Mengambil seluruh konfigurasi environment (`.env`) aktif |
+| `POST` | `/api/settings` | Menyimpan perubahan konfigurasi ke file `.env` dan langsung di-reload ke server |
 | `GET` | `/api/engines` | Daftar engine, kapabilitas, & daftar suara (beserta gender & bahasa) |
 | `GET` | `/api/voices/sample` | Preview sample audio pendek (`?engine=edge&voice=id-ID-GadisNeural&language=id`) |
 | `POST` | `/api/engines/{name}/load` | Muat model ke memori secara manual |
 | `POST` | `/api/engines/{name}/unload` | Lepas model dari memori untuk menghemat RAM/VRAM |
 | `POST` | `/api/tts/generate` | Generate TTS via form (mendukung upload `ref_audio` atau `clone_id`) |
 | `POST` | `/api/stt/transcribe` | Transkripsi audio via dashboard |
-| `GET` | `/api/history` | Daftar riwayat generasi dari SQLite |
+| `GET` | `/api/history` | Daftar riwayat generasi dari SQLite (filter jenis, pagination, counter header) |
+| `POST` | `/api/history/bulk-delete` | Hapus beberapa riwayat sekaligus (`{"ids": [1, 2, 3]}`) |
 | `GET` | `/api/history/{id}/audio` | Unduh/putar file audio dari riwayat |
-| `DELETE` | `/api/history/{id}` | Hapus item riwayat |
+| `DELETE` | `/api/history/{id}` | Hapus satu item riwayat |
 | `GET` / `POST` / `DELETE` | `/api/clones` | Kelola sample suara untuk *voice cloning* |
+
+---
+
+## 5. Storage Auto-Clean & System Logs API
+
+### `GET /api/system/logs`
+Mengambil baris log live sistem dari memori dan file `data/localtts.log`.
+
+**Query Parameters:**
+- `level`: `ALL` (default), `INFO`, `WARNING`, `ERROR`
+- `limit`: Jumlah maksimal baris log (default: 200, maks: 500)
+
+**Contoh Response:**
+```json
+{
+  "logs": [
+    {
+      "timestamp": "2026-11-19 14:32:01",
+      "level": "INFO",
+      "category": "SYSTEM",
+      "source": "SYSTEM",
+      "message": "LocalTTS application started successfully."
+    }
+  ]
+}
+```
+
+### `POST /api/system/clean`
+Menjalankan pemeriksaan storage dan pembersihan file audio output lama atau rotasi log secara instan tanpa menunggu jadwal cron berkala.
+
+**Contoh Response:**
+```json
+{
+  "ok": true,
+  "cleaned_files": 12,
+  "cleaned_by_age": 5,
+  "cleaned_by_threshold": 7,
+  "freed_mb": 4.82,
+  "disk_percent_before": 78.4,
+  "disk_percent_after": 72.1,
+  "disk_free_gb": 18.5,
+  "pruned_db_logs": 240,
+  "log_file_status": {
+    "rotated": false,
+    "pruned_lines": 120,
+    "size_mb": 1.2
+  }
+}
+```
+
+---
+
+## 6. Settings API (`/api/settings`)
+
+Mengambil atau memperbarui konfigurasi environment `.env` secara visual dari UI maupun sistem otomatisasi.
+
+### `GET /api/settings`
+Mengembalikan status konfigurasi aktif server.
+
+### `POST /api/settings`
+Memperbarui file `.env` di disk dan langsung memuat ulang nilainya ke runtime aplikasi tanpa restart manual.
+
+**Request Body (JSON):**
+```json
+{
+  "app_name": "LocalTTS Production",
+  "port": 8000,
+  "auth_username": "admin",
+  "auth_password": "supersecretpassword",
+  "api_key": "ltk_customsecretkey123456",
+  "device": "auto",
+  "enabled_engines": "kokoro,edge,whisper,omnivoice,qwen3",
+  "idle_unload_seconds": 300,
+  "tts_max_chars": 5000,
+  "stt_max_file_mb": 50,
+  "webhook_url": "https://webhook.site/my-id",
+  "allow_local_urls": true,
+  "auto_clean_disk_percent": 75,
+  "auto_clean_retention_days": 30,
+  "log_retention_days": 3,
+  "log_max_mb": 10
+}
+```

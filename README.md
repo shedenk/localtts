@@ -31,6 +31,7 @@ Namun, menjalankan dan mengintegrasikan model-model tersebut secara terpisah san
 - **Satu REST API Standar OpenAI:** Endpoint `/v1/audio/speech` dan `/v1/audio/transcriptions` siap pakai untuk menggantikan API OpenAI berbayar dengan model lokal tanpa mengubah kode aplikasi klien Anda.
 - **Async Job Queue & Webhook:** Menyediakan antrean background `/v1/jobs/*` dengan nomor antrian, persentase progress, dan webhook callback otomatis saat proses selesai.
 - **Manajemen Memori Pintar:** Fitur *lazy-loading* (hanya memuat model saat diminta) dan *auto-unload* (mengosongkan RAM/VRAM saat idle) sehingga server hemat daya dan tidak boros memori.
+- **Pengaturan Visual `.env` & Auto-Clean Storage:** Atur seluruh konfigurasi server, keamanan, kuota, dan retensi storage langsung dari browser UI tanpa perlu mengedit file `.env` manual via terminal / SSH. Dilengkapi proteksi disk auto-clean saat kapasitas mencapai batas 75% serta rotasi log berkala.
 - **100% Self-Hosted & Privasi:** Semua proses dijalankan di server atau komputer Anda sendiri. Data teks dan rekaman suara Anda tidak pernah dikirim ke pihak ketiga.
 
 ---
@@ -83,6 +84,8 @@ Berikut adalah tampilan antarmuka web LocalTTS yang modern, responsif, dan diran
 
 ### 7. ⚙️ Menu Pengaturan Environment (.env)
 > Kelola semua konfigurasi `.env` secara visual langsung dari UI: nama aplikasi, port HTTP, proteksi login UI (username/password), API Key & generator kunci acak, compute device (`CUDA` / `MPS` / `CPU`), seleksi engine aktif (Kokoro, Edge, Whisper, OmniVoice, Qwen3), batas karakter/file, default webhook, hingga kebijakan auto-clean disk (75%) dan retensi file audio lama (30 hari). Perubahan langsung tersimpan ke file `.env` dan di-reload ke runtime server tanpa perlu akses terminal / SSH manual.
+
+![Settings Page](docs/screenshots/06_settings.png)
 
 ---
 

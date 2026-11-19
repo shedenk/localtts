@@ -107,6 +107,14 @@ async def run_cdp():
         with open(f"{SCREENSHOT_DIR}/05_system_info.png", "wb") as f:
             f.write(base64.b64decode(res["data"]))
 
+        # Tab 6: Settings
+        print("Capturing 06_settings.png ...")
+        await send("Runtime.evaluate", {"expression": "Array.from(document.querySelectorAll('button')).find(b => b.textContent.includes('Settings')).click();"})
+        await asyncio.sleep(1.0)
+        res = await send("Page.captureScreenshot", {"format": "png"})
+        with open(f"{SCREENSHOT_DIR}/06_settings.png", "wb") as f:
+            f.write(base64.b64decode(res["data"]))
+
         print("All screenshots successfully captured!")
 
 try:
