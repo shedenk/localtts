@@ -499,13 +499,13 @@
     <section x-show="tab==='api'" class="space-y-6">
       <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
         <div class="flex flex-wrap items-center justify-between gap-3">
-          <div>
+          <div class="space-y-1.5">
             <h2 class="text-sm font-semibold">OpenAI-Compatible API Documentation</h2>
-            <p class="text-xs text-slate-400 mt-0.5">
+            <p class="text-xs text-slate-400">
               Base URL: <code class="text-indigo-300 font-mono" x-text="location.origin"></code> ·
               Auth: <strong class="text-slate-200" x-text="sys.api_auth_enabled ? `Protected (${sys.api_key_header} / Bearer)` : 'Open (API_KEY di .env kosong)'"></strong>
             </p>
-            <p class="text-[11px] text-amber-300/90 mt-1">
+            <p class="text-[11px] text-amber-300/90 pt-1">
               <span x-show="sys.api_auth_enabled">
                 API Key aktif: <code class="bg-slate-950 px-1.5 py-0.5 rounded font-mono text-amber-200" x-text="sys.api_key"></code> —
               </span>
