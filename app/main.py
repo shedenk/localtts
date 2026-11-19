@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Request
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import FileResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from app.api.jobs import router as jobs_router
@@ -69,6 +69,30 @@ if (WEB_DIR / "assets").exists():
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon():
+    fav = WEB_DIR / "favicon.ico"
+    if fav.exists():
+        return FileResponse(fav, media_type="image/x-icon")
+    return Response(status_code=204)
+
+
+@app.get("/favicon.svg", include_in_schema=False)
+def favicon_svg():
+    fav = WEB_DIR / "favicon.svg"
+    if fav.exists():
+        return FileResponse(fav, media_type="image/svg+xml")
+    return Response(status_code=204)
+
+
+@app.get("/apple-touch-icon.png", include_in_schema=False)
+def apple_touch_icon():
+    fav = WEB_DIR / "apple-touch-icon.png"
+    if fav.exists():
+        return FileResponse(fav, media_type="image/png")
+    return Response(status_code=204)
 
 
 @app.get("/login")
