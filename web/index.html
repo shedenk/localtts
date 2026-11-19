@@ -55,14 +55,16 @@
     </div>
   </header>
 
+  <!-- Floating Toast Balloon (Top-Right) -->
+  <div x-show="toast.msg" x-transition
+    class="fixed top-4 right-4 z-50 max-w-sm px-4 py-3 rounded-2xl text-xs sm:text-sm border shadow-2xl backdrop-blur flex items-center justify-between gap-3"
+    :class="toast.type==='error' ? 'bg-rose-950/95 border-rose-700 text-rose-100' : 'bg-slate-900/95 border-emerald-600/80 text-emerald-100'"
+    style="display: none;">
+    <span class="leading-snug" x-text="toast.msg"></span>
+    <button @click="toast.msg=''" class="text-xs opacity-70 hover:opacity-100 shrink-0">✕</button>
+  </div>
+
   <main class="max-w-6xl mx-auto px-4 py-6">
-    <!-- Toast -->
-    <div x-show="toast.msg" x-transition
-      class="mb-4 px-4 py-2.5 rounded-xl text-sm border flex items-center justify-between"
-      :class="toast.type==='error' ? 'bg-rose-950/60 border-rose-800 text-rose-200' : 'bg-emerald-950/60 border-emerald-800 text-emerald-200'">
-      <span x-text="toast.msg"></span>
-      <button @click="toast.msg=''" class="text-xs opacity-70 hover:opacity-100">✕</button>
-    </div>
 
     <!-- TAB 1: TTS STUDIO -->
     <section x-show="tab==='tts'" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -246,12 +248,12 @@
         <div class="space-y-2.5">
           <template x-for="(item, idx) in ttsHist.items" :key="item.id">
             <div class="rounded-xl p-3.5 text-xs space-y-2 border transition"
-              :class="(idx === 0 && ttsHist.page === 1) ? 'bg-indigo-950/50 border-indigo-500/80 shadow-md shadow-indigo-950/30' : 'bg-slate-950 border-slate-800'">
+              :class="(idx === 0 && ttsHist.page === 1) ? 'bg-emerald-950/40 border-emerald-500/80 shadow-lg shadow-emerald-950/25' : 'bg-slate-950 border-slate-800'">
               <div class="flex flex-wrap items-center justify-between gap-2">
                 <div class="flex flex-wrap items-center gap-2">
                   <input type="checkbox" :value="item.id" x-model.number="ttsHist.selected" class="rounded accent-indigo-500" />
                   <span x-show="idx === 0 && ttsHist.page === 1"
-                    class="px-1.5 py-0.5 rounded bg-indigo-600 text-white font-semibold text-[10px]">LATEST</span>
+                    class="px-2 py-0.5 rounded-full bg-emerald-500 text-slate-950 font-bold text-[10px]">✨ NEW</span>
                   <span class="font-medium text-indigo-300" x-text="item.engine"></span>
                   <span x-show="item.voice" class="text-slate-400" x-text="item.voice"></span>
                   <span class="text-slate-500" x-text="item.created_at"></span>
@@ -389,11 +391,14 @@
         </div>
 
         <div class="space-y-2.5">
-          <template x-for="item in sttHist.items" :key="item.id">
-            <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs space-y-2">
+          <template x-for="(item, idx) in sttHist.items" :key="item.id">
+            <div class="rounded-xl p-3 text-xs space-y-2 border transition"
+              :class="(idx === 0 && sttHist.page === 1) ? 'bg-emerald-950/40 border-emerald-500/80 shadow-lg shadow-emerald-950/25' : 'bg-slate-950 border-slate-800'">
               <div class="flex flex-wrap items-center justify-between gap-2">
                 <div class="flex items-center gap-2.5">
                   <input type="checkbox" :value="item.id" x-model.number="sttHist.selected" class="rounded accent-teal-500" />
+                  <span x-show="idx === 0 && sttHist.page === 1"
+                    class="px-2 py-0.5 rounded-full bg-emerald-500 text-slate-950 font-bold text-[10px]">✨ NEW</span>
                   <span class="font-medium text-teal-300" x-text="item.model || 'whisper'"></span>
                   <span class="text-slate-400" x-text="item.input_text"></span>
                   <span class="text-slate-500" x-text="item.created_at"></span>
@@ -814,7 +819,7 @@
             const data = await res.json();
             if (!res.ok) throw new Error(data.detail || 'TTS failed');
             this.tts.result = data;
-            if (this.toast.msg.includes('Menyiapkan / mengunduh')) this.toast.msg = '';
+            this.notify('Audio berhasil dibuat!');
             await this.loadHistory('tts');
             await this.loadSystem();
           } catch (e) {
@@ -839,7 +844,7 @@
             const data = await res.json();
             if (!res.ok) throw new Error(data.detail || 'STT failed');
             this.stt.result = data;
-            if (this.toast.msg.includes('Menyiapkan / mengunduh')) this.toast.msg = '';
+            this.notify('Transkripsi selesai!');
             await this.loadHistory('stt');
             await this.loadSystem();
           } catch (e) {
