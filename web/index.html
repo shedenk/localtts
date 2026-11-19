@@ -586,6 +586,13 @@
             </div>
             <pre class="bg-slate-950 border border-slate-800 rounded-xl p-3.5 overflow-x-auto text-teal-300 leading-relaxed" x-text="apiSnippet('stt')"></pre>
           </div>
+          <div class="lg:col-span-2 space-y-1.5">
+            <div class="flex items-center justify-between">
+              <span class="text-slate-300 font-medium">3. Async Job Queue, Progress & Webhook — <code class="text-amber-300">POST /v1/jobs/speech</code> (default dari <code>WEBHOOK_URL</code> di <code>.env</code> atau kirim <code>webhook_url</code> per-request)</span>
+              <button @click="copyText(apiSnippet('jobs'))" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200">Copy</button>
+            </div>
+            <pre class="bg-slate-950 border border-slate-800 rounded-xl p-3.5 overflow-x-auto text-amber-300 leading-relaxed" x-text="apiSnippet('jobs')"></pre>
+          </div>
         </div>
       </div>
     </section>
@@ -1201,6 +1208,21 @@
               return `<?php\n$ch = curl_init("${base}/v1/audio/speech");\ncurl_setopt_array($ch, [\n  CURLOPT_POST => true,\n  CURLOPT_RETURNTRANSFER => true,\n  CURLOPT_HTTPHEADER => [\n    "Content-Type: application/json",${auth ? `\n    "Authorization: Bearer ${key}",` : ''}\n  ],\n  CURLOPT_POSTFIELDS => json_encode([\n    "model" => "edge",\n    "input" => "Halo dari LocalTTS!",\n    "voice" => "id-ID-GadisNeural",\n    "language" => "id",\n    "response_format" => "mp3",\n  ]),\n]);\n$audio = curl_exec($ch);\nfile_put_contents("speech.mp3", $audio);`;
             }
             return `package main\nimport ("bytes"; "io"; "net/http"; "os")\nfunc main() {\n  body := []byte(\`{"model":"edge","input":"Halo dari LocalTTS!","voice":"id-ID-GadisNeural","language":"id"}\`)\n  req, _ := http.NewRequest("POST", "${base}/v1/audio/speech", bytes.NewBuffer(body))\n  req.Header.Set("Content-Type", "application/json")${auth ? `\n  req.Header.Set("Authorization", "Bearer ${key}")` : ''}\n  resp, _ := http.DefaultClient.Do(req)\n  defer resp.Body.Close()\n  out, _ := os.Create("speech.mp3")\n  io.Copy(out, resp.Body)\n}`;
+          }
+          if (kind === 'jobs') {
+            if (this.apiLang === 'curl') {
+              return `# 1. Enqueue TTS job (webhook_url opsional, default pakai WEBHOOK_URL di .env)\ncurl -X POST ${base}/v1/jobs/speech \\\n  -H "Content-Type: application/json"${auth ? ` \\\n  -H "Authorization: Bearer ${key}"` : ''} \\\n  -d '{"model":"edge","input":"Halo dari antrian job!","voice":"id-ID-GadisNeural","language":"id","webhook_url":"https://webhook.site/your-id"}'\n\n# 2. Cek progress & nomor antrian\ncurl ${base}/v1/jobs/JOB_ID${auth ? ` -H "Authorization: Bearer ${key}"` : ''}\n\n# 3. Download hasil setelah status == "completed"\ncurl ${base}/v1/jobs/JOB_ID/result${auth ? ` -H "Authorization: Bearer ${key}"` : ''} --output hasil.mp3`;
+            }
+            if (this.apiLang === 'python') {
+              return `import time, requests\n\nheaders = {${auth ? `"Authorization": "Bearer ${key}"` : ''}}\njob = requests.post("${base}/v1/jobs/speech", headers=headers, json={\n    "model": "edge", "input": "Halo dari antrian job!", "voice": "id-ID-GadisNeural", "language": "id"\n}).json()\n\nwhile True:\n    st = requests.get(f"${base}/v1/jobs/{job['job_id']}", headers=headers).json()\n    print(st["status"], st["progress"], "%", st["stage"])\n    if st["status"] in ("completed", "failed"): break\n    time.sleep(1)\n\naudio = requests.get(f"${base}/v1/jobs/{job['job_id']}/result", headers=headers).content\nopen("hasil.mp3", "wb").write(audio)`;
+            }
+            if (this.apiLang === 'javascript') {
+              return `const headers = { "Content-Type": "application/json"${auth ? `, "Authorization": "Bearer ${key}"` : ''} };\nconst job = await fetch("${base}/v1/jobs/speech", {\n  method: "POST", headers,\n  body: JSON.stringify({ model: "edge", input: "Halo!", voice: "id-ID-GadisNeural", language: "id" })\n}).then(r => r.json());\n\n// Polling progress\nconst st = await fetch(\`${base}/v1/jobs/\${job.job_id}\`, { headers }).then(r => r.json());\nconsole.log(st.status, st.progress, st.queue_position);`;
+            }
+            if (this.apiLang === 'php') {
+              return `<?php\n// POST /v1/jobs/speech -> GET /v1/jobs/{job_id} -> GET /v1/jobs/{job_id}/result\n$ch = curl_init("${base}/v1/jobs/speech");\ncurl_setopt_array($ch, [\n  CURLOPT_POST => true, CURLOPT_RETURNTRANSFER => true,\n  CURLOPT_HTTPHEADER => ["Content-Type: application/json"${auth ? `, "Authorization: Bearer ${key}"` : ''}],\n  CURLOPT_POSTFIELDS => json_encode(["model" => "edge", "input" => "Halo!", "voice" => "id-ID-GadisNeural", "language" => "id"]),\n]);\n$job = json_decode(curl_exec($ch), true);\necho "Job ID: " . $job["job_id"] . " | Antrian: " . $job["queue_position"];`;
+            }
+            return `// POST ${base}/v1/jobs/speech -> 202 {job_id, queue_position}\n// GET  ${base}/v1/jobs/{job_id} -> {status, progress, stage, queue_position}\n// GET  ${base}/v1/jobs/{job_id}/result -> Audio / Transcript`;
           }
           // STT
           if (this.apiLang === 'curl') {

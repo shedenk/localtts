@@ -251,7 +251,7 @@ curl_close($ch);
 
 Untuk proses berat/lama (seperti *OmniVoice*, *Qwen3-TTS*, atau file audio berdurasi panjang di *Whisper*), gunakan endpoint **Async Job Queue**:
 1. Panggil `POST /v1/jobs/speech` atau `POST /v1/jobs/transcriptions` → langsung mendapat `202 Accepted` berisi `job_id`, `queue_position`, dan `status_url`.
-2. Pantau progress (`0–100%`) & posisi antrian lewat `GET /v1/jobs/{job_id}`, atau sertakan `webhook_url` agar server otomatis mengirim `POST` JSON ke URL Anda saat selesai.
+2. Pantau progress (`0–100%`) & posisi antrian lewat `GET /v1/jobs/{job_id}`, atau sertakan `webhook_url` (atau set default `WEBHOOK_URL` di `.env`) agar server otomatis mengirim `POST` JSON ke URL Anda saat selesai.
 3. Ambil hasil audio / transkrip lewat `GET /v1/jobs/{job_id}/result`.
 
 ```bash

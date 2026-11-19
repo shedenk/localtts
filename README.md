@@ -25,7 +25,7 @@ Fokus pada **Bahasa Inggris (`en`)** dan **Bahasa Indonesia (`id`)**, lengkap de
 - **Keamanan `.env` Only (Tanpa Setup DB User):**
   - Login UI menggunakan `AUTH_USERNAME` & `AUTH_PASSWORD` (kosongkan jika ingin tanpa login).
   - API menggunakan `API_KEY` via header `Authorization: Bearer` atau `X-API-Key` (kosongkan jika API ingin terbuka tanpa header).
-- **OpenAI-Compatible API:** Siap dihubungkan ke **OpenWebUI**, **n8n**, **LangChain**, atau **OpenAI SDK**.
+- **OpenAI-Compatible API & Async Job Queue:** Siap dihubungkan ke **OpenWebUI**, **n8n**, **LangChain**, atau **OpenAI SDK**, serta menyediakan `/v1/jobs/*` dengan nomor antrian, progress `0–100%`, dan notifikasi **Webhook** (`WEBHOOK_URL` di `.env` atau per-request).
 
 ---
 
