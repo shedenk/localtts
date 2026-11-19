@@ -70,3 +70,10 @@ def index_page(request: Request):
     if not is_ui_authenticated(request):
         return RedirectResponse(url="/login", status_code=302)
     return FileResponse(WEB_DIR / "index.html")
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    settings = get_settings()
+    uvicorn.run("app.main:app", host=settings.host, port=settings.port)

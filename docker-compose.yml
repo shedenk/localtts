@@ -10,8 +10,9 @@ services:
     container_name: localtts
     restart: unless-stopped
     ports:
-      - "${PORT:-8000}:8000"
+      - "${PORT:-8000}:${PORT:-8000}"
     environment:
+      - PORT=${PORT:-8000}
       - APP_NAME=${APP_NAME:-LocalTTS}
       - AUTH_USERNAME=${AUTH_USERNAME:-admin}
       - AUTH_PASSWORD=${AUTH_PASSWORD:-changeme123}
