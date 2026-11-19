@@ -596,9 +596,11 @@
           await this.loadClones();
           this.onEngineChange();
         },
-        notify(msg, type = 'ok') {
+        notify(msg, type = 'ok', duration = 5000) {
           this.toast = { msg, type };
-          setTimeout(() => { if (this.toast.msg === msg) this.toast.msg = ''; }, 5000);
+          if (duration > 0) {
+            setTimeout(() => { if (this.toast.msg === msg) this.toast.msg = ''; }, duration);
+          }
         },
         async loadSystem() {
           const res = await fetch('/api/system');
@@ -630,6 +632,10 @@
             this.samplePlaying = '';
           }
           this.sampleLoading = v.id;
+          const eng = this.currentEngine();
+          if (eng && !eng.loaded && eng.name !== 'edge') {
+            this.notify(`Menyiapkan / mengunduh model ${eng.display_name}... (penggunaan pertama bisa memakan waktu beberapa menit)`, 'ok', 0);
+          }
           try {
             const url = `/api/voices/sample?engine=${encodeURIComponent(this.tts.engine)}&voice=${encodeURIComponent(v.id)}&language=${encodeURIComponent(v.language)}`;
             const res = await fetch(url);
@@ -642,7 +648,9 @@
             this.sampleAudio = new Audio(objUrl);
             this.sampleAudio.onended = () => { this.samplePlaying = ''; };
             this.samplePlaying = v.id;
+            if (this.toast.msg.includes('Menyiapkan / mengunduh')) this.toast.msg = '';
             await this.sampleAudio.play();
+            await this.loadSystem();
           } catch (e) {
             this.notify(e.message, 'error');
           } finally {
@@ -662,6 +670,10 @@
         },
         async generateTTS() {
           this.tts.loading = true;
+          const eng = this.currentEngine();
+          if (eng && !eng.loaded && eng.name !== 'edge') {
+            this.notify(`Menyiapkan / mengunduh model ${eng.display_name}... harap tunggu`, 'ok', 0);
+          }
           try {
             const fd = new FormData();
             fd.append('engine', this.tts.engine);
@@ -678,6 +690,7 @@
             const data = await res.json();
             if (!res.ok) throw new Error(data.detail || 'TTS failed');
             this.tts.result = data;
+            if (this.toast.msg.includes('Menyiapkan / mengunduh')) this.toast.msg = '';
             await this.loadSystem();
           } catch (e) {
             this.notify(e.message, 'error');
@@ -687,6 +700,10 @@
         },
         async transcribeSTT() {
           this.stt.loading = true;
+          const wEng = (this.sys.engines || []).find(e => e.name === 'whisper');
+          if (wEng && !wEng.loaded) {
+            this.notify(`Menyiapkan / mengunduh model Whisper (${this.stt.model_size})... harap tunggu`, 'ok', 0);
+          }
           try {
             const fd = new FormData();
             fd.append('file', this.stt.file);
@@ -697,6 +714,7 @@
             const data = await res.json();
             if (!res.ok) throw new Error(data.detail || 'STT failed');
             this.stt.result = data;
+            if (this.toast.msg.includes('Menyiapkan / mengunduh')) this.toast.msg = '';
             await this.loadSystem();
           } catch (e) {
             this.notify(e.message, 'error');
