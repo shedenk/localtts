@@ -341,7 +341,10 @@
           <h2 class="text-sm font-semibold">Transcript Result</h2>
           <div x-show="stt.result" class="flex flex-wrap gap-1.5 text-xs">
             <button @click="copyText(stt.result.text)"
-              class="px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700">Copy Text</button>
+              class="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              <span>Copy Text</span>
+            </button>
             <button @click="downloadTranscript('txt')"
               class="px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700">⬇ TXT</button>
             <button @click="downloadTranscript('csv')"
@@ -416,7 +419,10 @@
                 </div>
                 <div class="flex items-center gap-1.5">
                   <button @click="viewTranscript(item)" class="px-2.5 py-1 rounded-md bg-indigo-600/80 hover:bg-indigo-500 text-white">👁 Lihat</button>
-                  <button @click="copyText(item.output_text)" class="px-2 py-1 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-200">Copy</button>
+                  <button @click="copyText(item.output_text)" class="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-200">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                    <span>Copy</span>
+                  </button>
                   <button @click="downloadHistoryText(item, 'txt')" class="px-2 py-1 rounded-md bg-slate-800 hover:bg-teal-600 text-slate-200">⬇ TXT</button>
                   <button @click="downloadHistoryText(item, 'csv')" class="px-2 py-1 rounded-md bg-slate-800 hover:bg-teal-600 text-slate-200">⬇ CSV</button>
                   <button @click="deleteHistoryItem('stt', item.id)" class="text-rose-400 hover:text-rose-300 px-1.5">Hapus</button>
@@ -558,7 +564,10 @@
                     class="px-2.5 py-1 rounded-md font-medium uppercase text-[11px] transition" x-text="lang"></button>
                 </template>
                 <button @click="copyText(location.origin + activeEndpoint().path)"
-                  class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 ml-1">Copy URL</button>
+                  class="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 ml-1">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                  <span>Copy URL</span>
+                </button>
               </div>
             </div>
 
@@ -570,7 +579,10 @@
                     <div class="flex items-center justify-between text-slate-400 font-medium">
                       <span>Sample Request (<span class="uppercase text-indigo-300" x-text="apiLang"></span>)</span>
                       <button @click="copyText(step.request)"
-                        class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px]">Copy Code</button>
+                        class="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px]">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                        <span>Copy Code</span>
+                      </button>
                     </div>
                     <pre class="bg-slate-900 border border-slate-800 rounded-xl p-3 overflow-x-auto text-indigo-300 leading-relaxed"
                       x-text="step.request"></pre>
@@ -760,7 +772,10 @@
       <div class="flex flex-wrap items-center justify-between gap-2">
         <div class="flex gap-2 text-xs">
           <button type="button" @click="copyText((viewModal.item?.kind === 'tts' ? viewModal.item?.input_text : viewModal.item?.output_text) || '')"
-            class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200">Copy Text</button>
+            class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            <span>Copy Text</span>
+          </button>
           <template x-if="viewModal.item?.kind === 'tts' && viewModal.item?.audio_filename">
             <a :href="`/api/history/${viewModal.item.id}/audio`" :download="viewModal.item.audio_filename"
               class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-indigo-600 text-slate-200">⬇ Download Audio</a>
