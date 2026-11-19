@@ -141,28 +141,42 @@ def _run_install_bg(engine_name: str, omnivoice_present: bool) -> None:
     global _INSTALL_STATE
     try:
         uv_bin = shutil.which("uv")
-        if engine_name == "omnivoice":
-            pkgs = ["torch", "torchaudio", "omnivoice"]
-            extra_flags: list[str] = []
-        elif engine_name == "qwen3":
-            pkgs = ["torch", "torchaudio", "qwen-tts"]
-            extra_flags = ["--no-deps"] if omnivoice_present else []
-        else:
-            pkgs = [engine_name]
-            extra_flags = []
+        root_dir = Path(__file__).resolve().parent.parent.parent
 
-        if uv_bin:
-            if extra_flags:
-                # Install torch+torchaudio normally first, then qwen-tts --no-deps
-                cmd1 = [uv_bin, "pip", "install", "--python", sys.executable, "torch", "torchaudio"]
-                p1 = subprocess.run(cmd1, capture_output=True, text=True, check=False)
-                if p1.returncode != 0:
-                    raise RuntimeError(p1.stderr[-500:] or p1.stdout[-500:])
-                cmd = [uv_bin, "pip", "install", "--python", sys.executable, "--no-deps", "qwen-tts"]
+        if engine_name == "qwen3" and omnivoice_present:
+            # OmniVoice uses transformers>=5.3 while qwen-tts requires transformers==4.57.3.
+            # Install qwen-tts into an isolated .venv-qwen3 so both engines coexist cleanly.
+            iso_venv = root_dir / ".venv-qwen3"
+            iso_py = iso_venv / "bin" / "python"
+            if not iso_py.exists():
+                iso_py = iso_venv / "Scripts" / "python.exe"
+            if uv_bin:
+                p0 = subprocess.run(
+                    [uv_bin, "venv", str(iso_venv), "--python", "3.12", "--allow-existing"],
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+                if p0.returncode != 0:
+                    raise RuntimeError(p0.stderr[-500:] or p0.stdout[-500:])
+                cmd = [uv_bin, "pip", "install", "--python", str(iso_py), "torch", "torchaudio", "qwen-tts"]
             else:
-                cmd = [uv_bin, "pip", "install", "--python", sys.executable, *pkgs]
+                p0 = subprocess.run([sys.executable, "-m", "venv", str(iso_venv)], capture_output=True, text=True, check=False)
+                if p0.returncode != 0:
+                    raise RuntimeError(p0.stderr[-500:])
+                cmd = [str(iso_py), "-m", "pip", "install", "torch", "torchaudio", "qwen-tts"]
         else:
-            cmd = [sys.executable, "-m", "pip", "install", *extra_flags, *pkgs]
+            if engine_name == "omnivoice":
+                pkgs = ["torch", "torchaudio", "omnivoice"]
+            elif engine_name == "qwen3":
+                pkgs = ["torch", "torchaudio", "qwen-tts"]
+            else:
+                pkgs = [engine_name]
+
+            if uv_bin:
+                cmd = [uv_bin, "pip", "install", "--python", sys.executable, *pkgs]
+            else:
+                cmd = [sys.executable, "-m", "pip", "install", *pkgs]
 
         proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
         if proc.returncode != 0:

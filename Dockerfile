@@ -26,7 +26,8 @@ COPY pyproject.toml ./
 RUN uv venv /app/.venv && \
     if [ "$INSTALL_ALL_ENGINES" = "true" ]; then \
       uv sync --no-install-project --extra omnivoice && \
-      uv pip install --no-deps qwen-tts; \
+      uv venv /app/.venv-qwen3 --python 3.12 && \
+      uv pip install --python /app/.venv-qwen3/bin/python torch torchaudio qwen-tts; \
     else \
       uv sync --no-install-project; \
     fi

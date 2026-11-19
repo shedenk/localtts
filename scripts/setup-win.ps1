@@ -23,7 +23,8 @@ uv venv --python 3.12 --allow-existing
 if ($args -contains "--all") {
     Write-Host "Installing All Engines (Kokoro + Edge-TTS + Faster-Whisper + OmniVoice + Qwen3-TTS)..."
     uv sync --extra omnivoice
-    uv pip install --no-deps qwen-tts
+    uv venv .venv-qwen3 --python 3.12 --allow-existing
+    uv pip install --python .venv-qwen3\Scripts\python.exe torch torchaudio qwen-tts
 } else {
     Write-Host "Installing Standard mode (Kokoro + Edge-TTS + Faster-Whisper)..."
     Write-Host "Tip: OmniVoice & Qwen3-TTS bisa diinstall langsung dari UI nanti sesuai spek!"
