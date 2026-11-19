@@ -35,6 +35,9 @@ class Settings(BaseSettings):
     tts_max_chars: int = 5000
     stt_max_file_mb: int = 50
 
+    # Default Webhook URL (optional, overridden by per-job webhook_url)
+    webhook_url: str = ""
+
     # Storage
     data_dir: str = "./data"
     models_dir: str = "./models"

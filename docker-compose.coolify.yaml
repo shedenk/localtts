@@ -26,6 +26,7 @@ services:
       - IDLE_UNLOAD_SECONDS=${IDLE_UNLOAD_SECONDS:-300}
       - TTS_MAX_CHARS=${TTS_MAX_CHARS:-5000}
       - STT_MAX_FILE_MB=${STT_MAX_FILE_MB:-50}
+      - WEBHOOK_URL=${WEBHOOK_URL:-}
       - DATA_DIR=/app/data
       - MODELS_DIR=/app/models
     volumes:

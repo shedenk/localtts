@@ -33,12 +33,13 @@ class AsyncSpeechRequest(BaseModel):
 
 
 def _validate_webhook(url: str | None) -> str:
-    if not url or not url.strip():
+    target = url.strip() if (url and url.strip()) else get_settings().webhook_url.strip()
+    if not target:
         return ""
-    parsed = urlparse(url.strip())
+    parsed = urlparse(target)
     if parsed.scheme not in ("http", "https") or not parsed.netloc:
         raise HTTPException(status_code=400, detail="Invalid webhook_url. Must be http:// or https://.")
-    return url.strip()
+    return target
 
 
 @router.post("/speech", status_code=status.HTTP_202_ACCEPTED)
