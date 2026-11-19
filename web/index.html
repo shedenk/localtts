@@ -506,12 +506,19 @@
               Ubah atau kosongkan <code class="font-mono text-slate-300">API_KEY</code> di file <code class="font-mono text-slate-300">.env</code> (atau Environment Variables di Coolify).
             </p>
           </div>
-          <div class="flex flex-wrap gap-1 text-xs">
-            <template x-for="lang in ['curl', 'python', 'javascript', 'php', 'go']" :key="lang">
-              <button @click="apiLang = lang"
-                :class="apiLang === lang ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'"
-                class="px-3 py-1.5 rounded-lg font-medium uppercase transition" x-text="lang"></button>
-            </template>
+          <div class="flex flex-wrap items-center gap-2">
+            <div class="flex flex-wrap gap-1 text-xs">
+              <template x-for="lang in ['curl', 'python', 'javascript', 'php', 'go']" :key="lang">
+                <button @click="apiLang = lang"
+                  :class="apiLang === lang ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'"
+                  class="px-3 py-1.5 rounded-lg font-medium uppercase transition" x-text="lang"></button>
+              </template>
+            </div>
+            <div class="flex gap-1 text-xs border-l border-slate-800 pl-2">
+              <button @click="exportApiDocs('md')" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-emerald-700 text-slate-200 transition">⬇ MD</button>
+              <button @click="exportApiDocs('txt')" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-emerald-700 text-slate-200 transition">⬇ TXT</button>
+              <button @click="exportApiDocs('csv')" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-emerald-700 text-slate-200 transition">⬇ CSV</button>
+            </div>
           </div>
         </div>
 
@@ -1131,6 +1138,50 @@
         copyText(txt) {
           navigator.clipboard.writeText(txt);
           this.notify('Copied to clipboard!');
+        },
+        exportApiDocs(fmt) {
+          const base = location.origin;
+          const authText = this.sys.api_auth_enabled
+            ? `Protected (Authorization: Bearer ${this.sys.api_key} atau ${this.sys.api_key_header}: ${this.sys.api_key})`
+            : 'Open (API_KEY di .env kosong)';
+          const rows = [
+            ['GET', '/v1/models', 'Yes (if API_KEY set)', 'Daftar engine yang siap dipakai (kokoro, edge, omnivoice, qwen3, whisper)'],
+            ['POST', '/v1/audio/speech', 'Yes (if API_KEY set)', 'TTS JSON: model, input, voice, language, response_format, speed'],
+            ['POST', '/v1/audio/transcriptions', 'Yes (if API_KEY set)', 'Whisper STT multipart: file atau file_url, model, language, response_format'],
+            ['POST', '/v1/jobs/speech', 'Yes (if API_KEY set)', 'Async Queue TTS (return job_id, queue_position, opsional webhook_url)'],
+            ['POST', '/v1/jobs/transcriptions', 'Yes (if API_KEY set)', 'Async Queue Whisper STT (file/file_url, opsional webhook_url)'],
+            ['GET', '/v1/jobs/{job_id}', 'Yes (if API_KEY set)', 'Cek progress (0-100%), stage, queue_position, dan result'],
+            ['GET', '/v1/jobs/{job_id}/result', 'Yes (if API_KEY set)', 'Ambil audio TTS atau transkrip STT setelah status == completed'],
+            ['GET', '/health', 'No', 'Healthcheck server untuk Docker/Coolify'],
+          ];
+
+          let content = '';
+          let mime = 'text/plain;charset=utf-8';
+          let filename = `localtts-api-docs.${fmt}`;
+
+          if (fmt === 'csv') {
+            mime = 'text/csv;charset=utf-8';
+            filename = 'localtts-api-endpoints.csv';
+            const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+            content = '\uFEFF' + ['method,endpoint,auth,description', ...rows.map(r => r.map(esc).join(','))].join('\n');
+          } else if (fmt === 'md') {
+            mime = 'text/markdown;charset=utf-8';
+            const table = ['| Method | Endpoint | Auth | Keterangan |', '| :--- | :--- | :--- | :--- |', ...rows.map(r => `| \`${r[0]}\` | \`${r[1]}\` | ${r[2]} | ${r[3]} |`)].join('\n');
+            content = `# LocalTTS API Documentation\n\n- **Base URL:** ${base}\n- **Auth:** ${authText}\n\n## Endpoints\n\n${table}\n\n## Examples (${this.apiLang.toUpperCase()})\n\n### 1. Text-to-Speech\n\`\`\`${this.apiLang}\n${this.apiSnippet('tts')}\n\`\`\`\n\n### 2. Whisper STT\n\`\`\`${this.apiLang}\n${this.apiSnippet('stt')}\n\`\`\`\n\n### 3. Async Job Queue & Webhook\n\`\`\`${this.apiLang}\n${this.apiSnippet('jobs')}\n\`\`\`\n`;
+          } else {
+            const list = rows.map(r => `${r[0]} ${base}${r[1]} (${r[2]}) -> ${r[3]}`).join('\n');
+            content = `LocalTTS API Documentation\nBase URL: ${base}\nAuth: ${authText}\n\nENDPOINTS:\n${list}\n\n=== 1. Text-to-Speech (${this.apiLang.toUpperCase()}) ===\n${this.apiSnippet('tts')}\n\n=== 2. Whisper STT (${this.apiLang.toUpperCase()}) ===\n${this.apiSnippet('stt')}\n\n=== 3. Async Job Queue & Webhook (${this.apiLang.toUpperCase()}) ===\n${this.apiSnippet('jobs')}\n`;
+          }
+
+          const blob = new Blob([content], { type: mime });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
         },
         downloadTranscript(fmt) {
           if (!this.stt.result) return;
