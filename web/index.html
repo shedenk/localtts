@@ -385,7 +385,13 @@
             <h2 class="text-sm font-semibold">OpenAI-Compatible API Documentation</h2>
             <p class="text-xs text-slate-400 mt-0.5">
               Base URL: <code class="text-indigo-300 font-mono" x-text="location.origin"></code> ·
-              Auth: <strong class="text-slate-200" x-text="sys.api_auth_enabled ? `Protected (Authorization: Bearer <API_KEY> atau ${sys.api_key_header}: <API_KEY>)` : 'Open (API_KEY di .env kosong)'"></strong>
+              Auth: <strong class="text-slate-200" x-text="sys.api_auth_enabled ? `Protected (${sys.api_key_header} / Bearer)` : 'Open (API_KEY di .env kosong)'"></strong>
+            </p>
+            <p class="text-[11px] text-amber-300/90 mt-1">
+              <span x-show="sys.api_auth_enabled">
+                API Key aktif: <code class="bg-slate-950 px-1.5 py-0.5 rounded font-mono text-amber-200" x-text="sys.api_key"></code> —
+              </span>
+              Ubah atau kosongkan <code class="font-mono text-slate-300">API_KEY</code> di file <code class="font-mono text-slate-300">.env</code> (atau Environment Variables di Coolify).
             </p>
           </div>
           <div class="flex flex-wrap gap-1 text-xs">
@@ -782,33 +788,34 @@
         apiSnippet(kind) {
           const base = location.origin;
           const auth = this.sys.api_auth_enabled;
+          const key = this.sys.api_key || 'YOUR_API_KEY';
           if (kind === 'tts') {
             if (this.apiLang === 'curl') {
-              return `curl -X POST ${base}/v1/audio/speech \\\n  -H "Content-Type: application/json"${auth ? ` \\\n  -H "Authorization: Bearer YOUR_API_KEY"` : ''} \\\n  -d '{"model":"edge","input":"Halo dari LocalTTS!","voice":"id-ID-GadisNeural","language":"id","response_format":"mp3"}' \\\n  --output speech.mp3`;
+              return `curl -X POST ${base}/v1/audio/speech \\\n  -H "Content-Type: application/json"${auth ? ` \\\n  -H "Authorization: Bearer ${key}"` : ''} \\\n  -d '{"model":"edge","input":"Halo dari LocalTTS!","voice":"id-ID-GadisNeural","language":"id","response_format":"mp3"}' \\\n  --output speech.mp3`;
             }
             if (this.apiLang === 'python') {
-              return `import requests\n\nres = requests.post(\n    "${base}/v1/audio/speech",${auth ? `\n    headers={"Authorization": "Bearer YOUR_API_KEY"},` : ''}\n    json={\n        "model": "edge",\n        "input": "Halo dari LocalTTS!",\n        "voice": "id-ID-GadisNeural",\n        "language": "id",\n        "response_format": "mp3",\n    },\n)\nres.raise_for_status()\nopen("speech.mp3", "wb").write(res.content)`;
+              return `import requests\n\nres = requests.post(\n    "${base}/v1/audio/speech",${auth ? `\n    headers={"Authorization": "Bearer ${key}"},` : ''}\n    json={\n        "model": "edge",\n        "input": "Halo dari LocalTTS!",\n        "voice": "id-ID-GadisNeural",\n        "language": "id",\n        "response_format": "mp3",\n    },\n)\nres.raise_for_status()\nopen("speech.mp3", "wb").write(res.content)`;
             }
             if (this.apiLang === 'javascript') {
-              return `const res = await fetch("${base}/v1/audio/speech", {\n  method: "POST",\n  headers: {\n    "Content-Type": "application/json",${auth ? `\n    "Authorization": "Bearer YOUR_API_KEY",` : ''}\n  },\n  body: JSON.stringify({\n    model: "edge",\n    input: "Halo dari LocalTTS!",\n    voice: "id-ID-GadisNeural",\n    language: "id",\n    response_format: "mp3",\n  }),\n});\nconst buf = Buffer.from(await res.arrayBuffer());\nrequire("fs").writeFileSync("speech.mp3", buf);`;
+              return `const res = await fetch("${base}/v1/audio/speech", {\n  method: "POST",\n  headers: {\n    "Content-Type": "application/json",${auth ? `\n    "Authorization": "Bearer ${key}",` : ''}\n  },\n  body: JSON.stringify({\n    model: "edge",\n    input: "Halo dari LocalTTS!",\n    voice: "id-ID-GadisNeural",\n    language: "id",\n    response_format: "mp3",\n  }),\n});\nconst buf = Buffer.from(await res.arrayBuffer());\nrequire("fs").writeFileSync("speech.mp3", buf);`;
             }
             if (this.apiLang === 'php') {
-              return `<?php\n$ch = curl_init("${base}/v1/audio/speech");\ncurl_setopt_array($ch, [\n  CURLOPT_POST => true,\n  CURLOPT_RETURNTRANSFER => true,\n  CURLOPT_HTTPHEADER => [\n    "Content-Type: application/json",${auth ? `\n    "Authorization: Bearer YOUR_API_KEY",` : ''}\n  ],\n  CURLOPT_POSTFIELDS => json_encode([\n    "model" => "edge",\n    "input" => "Halo dari LocalTTS!",\n    "voice" => "id-ID-GadisNeural",\n    "language" => "id",\n    "response_format" => "mp3",\n  ]),\n]);\n$audio = curl_exec($ch);\nfile_put_contents("speech.mp3", $audio);`;
+              return `<?php\n$ch = curl_init("${base}/v1/audio/speech");\ncurl_setopt_array($ch, [\n  CURLOPT_POST => true,\n  CURLOPT_RETURNTRANSFER => true,\n  CURLOPT_HTTPHEADER => [\n    "Content-Type: application/json",${auth ? `\n    "Authorization: Bearer ${key}",` : ''}\n  ],\n  CURLOPT_POSTFIELDS => json_encode([\n    "model" => "edge",\n    "input" => "Halo dari LocalTTS!",\n    "voice" => "id-ID-GadisNeural",\n    "language" => "id",\n    "response_format" => "mp3",\n  ]),\n]);\n$audio = curl_exec($ch);\nfile_put_contents("speech.mp3", $audio);`;
             }
-            return `package main\nimport ("bytes"; "io"; "net/http"; "os")\nfunc main() {\n  body := []byte(\`{"model":"edge","input":"Halo dari LocalTTS!","voice":"id-ID-GadisNeural","language":"id"}\`)\n  req, _ := http.NewRequest("POST", "${base}/v1/audio/speech", bytes.NewBuffer(body))\n  req.Header.Set("Content-Type", "application/json")${auth ? `\n  req.Header.Set("Authorization", "Bearer YOUR_API_KEY")` : ''}\n  resp, _ := http.DefaultClient.Do(req)\n  defer resp.Body.Close()\n  out, _ := os.Create("speech.mp3")\n  io.Copy(out, resp.Body)\n}`;
+            return `package main\nimport ("bytes"; "io"; "net/http"; "os")\nfunc main() {\n  body := []byte(\`{"model":"edge","input":"Halo dari LocalTTS!","voice":"id-ID-GadisNeural","language":"id"}\`)\n  req, _ := http.NewRequest("POST", "${base}/v1/audio/speech", bytes.NewBuffer(body))\n  req.Header.Set("Content-Type", "application/json")${auth ? `\n  req.Header.Set("Authorization", "Bearer ${key}")` : ''}\n  resp, _ := http.DefaultClient.Do(req)\n  defer resp.Body.Close()\n  out, _ := os.Create("speech.mp3")\n  io.Copy(out, resp.Body)\n}`;
           }
           // STT
           if (this.apiLang === 'curl') {
-            return `curl -X POST ${base}/v1/audio/transcriptions \\\n${auth ? `  -H "Authorization: Bearer YOUR_API_KEY" \\\n` : ''}  -F "file=@audio.mp3" \\\n  -F "model=base" \\\n  -F "language=id"`;
+            return `curl -X POST ${base}/v1/audio/transcriptions \\\n${auth ? `  -H "Authorization: Bearer ${key}" \\\n` : ''}  -F "file=@audio.mp3" \\\n  -F "model=base" \\\n  -F "language=id"`;
           }
           if (this.apiLang === 'python') {
-            return `import requests\n\nwith open("audio.mp3", "rb") as f:\n    res = requests.post(\n        "${base}/v1/audio/transcriptions",${auth ? `\n        headers={"Authorization": "Bearer YOUR_API_KEY"},` : ''}\n        files={"file": f},\n        data={"model": "base", "language": "id"},\n    )\nprint(res.json())`;
+            return `import requests\n\nwith open("audio.mp3", "rb") as f:\n    res = requests.post(\n        "${base}/v1/audio/transcriptions",${auth ? `\n        headers={"Authorization": "Bearer ${key}"},` : ''}\n        files={"file": f},\n        data={"model": "base", "language": "id"},\n    )\nprint(res.json())`;
           }
           if (this.apiLang === 'javascript') {
-            return `const form = new FormData();\nform.append("file", new Blob([fs.readFileSync("audio.mp3")]), "audio.mp3");\nform.append("model", "base");\nform.append("language", "id");\n\nconst res = await fetch("${base}/v1/audio/transcriptions", {\n  method: "POST",${auth ? `\n  headers: { "Authorization": "Bearer YOUR_API_KEY" },` : ''}\n  body: form,\n});\nconsole.log(await res.json());`;
+            return `const form = new FormData();\nform.append("file", new Blob([fs.readFileSync("audio.mp3")]), "audio.mp3");\nform.append("model", "base");\nform.append("language", "id");\n\nconst res = await fetch("${base}/v1/audio/transcriptions", {\n  method: "POST",${auth ? `\n  headers: { "Authorization": "Bearer ${key}" },` : ''}\n  body: form,\n});\nconsole.log(await res.json());`;
           }
           if (this.apiLang === 'php') {
-            return `<?php\n$ch = curl_init("${base}/v1/audio/transcriptions");\ncurl_setopt_array($ch, [\n  CURLOPT_POST => true,\n  CURLOPT_RETURNTRANSFER => true,${auth ? `\n  CURLOPT_HTTPHEADER => ["Authorization: Bearer YOUR_API_KEY"],` : ''}\n  CURLOPT_POSTFIELDS => [\n    "file" => new CURLFile("audio.mp3"),\n    "model" => "base",\n    "language" => "id",\n  ],\n]);\n$json = curl_exec($ch);\necho $json;`;
+            return `<?php\n$ch = curl_init("${base}/v1/audio/transcriptions");\ncurl_setopt_array($ch, [\n  CURLOPT_POST => true,\n  CURLOPT_RETURNTRANSFER => true,${auth ? `\n  CURLOPT_HTTPHEADER => ["Authorization: Bearer ${key}"],` : ''}\n  CURLOPT_POSTFIELDS => [\n    "file" => new CURLFile("audio.mp3"),\n    "model" => "base",\n    "language" => "id",\n  ],\n]);\n$json = curl_exec($ch);\necho $json;`;
           }
           return `// Gunakan multipart/form-data ke ${base}/v1/audio/transcriptions\n// Field: file=@audio.mp3, model=base, language=id`;
         }

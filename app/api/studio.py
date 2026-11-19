@@ -45,6 +45,7 @@ def system_status():
         "stats": get_stats(),
         "ui_auth_enabled": settings.ui_auth_enabled,
         "api_auth_enabled": settings.api_auth_enabled,
+        "api_key": settings.api_key,
         "api_key_header": settings.api_key_header,
         "idle_unload_seconds": settings.idle_unload_seconds,
         "engines": mgr.list_all(),
