@@ -288,10 +288,18 @@
       </div>
 
       <div class="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
-        <div class="flex items-center justify-between">
+        <div class="flex flex-wrap items-center justify-between gap-2">
           <h2 class="text-sm font-semibold">Transcript Result</h2>
-          <button x-show="stt.result" @click="copyText(stt.result.text)"
-            class="text-xs px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700">Copy Text</button>
+          <div x-show="stt.result" class="flex flex-wrap gap-1.5 text-xs">
+            <button @click="copyText(stt.result.text)"
+              class="px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700">Copy Text</button>
+            <button @click="downloadTranscript('txt')"
+              class="px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700">⬇ TXT</button>
+            <button @click="downloadTranscript('csv')"
+              class="px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700">⬇ CSV</button>
+            <button @click="downloadTranscript('srt')"
+              class="px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700">⬇ SRT</button>
+          </div>
         </div>
         <template x-if="stt.result">
           <div class="space-y-4">
@@ -802,6 +810,44 @@
         copyText(txt) {
           navigator.clipboard.writeText(txt);
           this.notify('Copied to clipboard!');
+        },
+        downloadTranscript(fmt) {
+          if (!this.stt.result) return;
+          let content = '';
+          let mime = 'text/plain;charset=utf-8';
+          const segs = this.stt.result.segments || [];
+
+          if (fmt === 'txt') {
+            content = this.stt.result.text || '';
+          } else if (fmt === 'csv') {
+            mime = 'text/csv;charset=utf-8';
+            const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+            const rows = ['id,start,end,text'];
+            for (const s of segs) {
+              rows.push([s.id, s.start, s.end, esc(s.text)].join(','));
+            }
+            content = '\uFEFF' + rows.join('\n');
+          } else if (fmt === 'srt') {
+            const ts = (sec) => {
+              const ms = Math.floor((sec % 1) * 1000);
+              const tot = Math.floor(sec);
+              const h = String(Math.floor(tot / 3600)).padStart(2, '0');
+              const m = String(Math.floor((tot % 3600) / 60)).padStart(2, '0');
+              const s = String(tot % 60).padStart(2, '0');
+              return `${h}:${m}:${s},${String(ms).padStart(3, '0')}`;
+            };
+            content = segs.map((s, i) => `${i + 1}\n${ts(s.start)} --> ${ts(s.end)}\n${s.text}\n`).join('\n');
+          }
+
+          const blob = new Blob([content], { type: mime });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `transcript.${fmt}`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
         },
         apiSnippet(kind) {
           const base = location.origin;
