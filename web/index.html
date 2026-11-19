@@ -506,19 +506,10 @@
               Ubah atau kosongkan <code class="font-mono text-slate-300">API_KEY</code> di file <code class="font-mono text-slate-300">.env</code> (atau Environment Variables di Coolify).
             </p>
           </div>
-          <div class="flex flex-wrap items-center gap-2">
-            <div class="flex flex-wrap gap-1 text-xs">
-              <template x-for="lang in ['curl', 'python', 'javascript', 'php', 'go']" :key="lang">
-                <button @click="apiLang = lang"
-                  :class="apiLang === lang ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'"
-                  class="px-3 py-1.5 rounded-lg font-medium uppercase transition" x-text="lang"></button>
-              </template>
-            </div>
-            <div class="flex gap-1 text-xs border-l border-slate-800 pl-2">
-              <button @click="exportApiDocs('md')" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-emerald-700 text-slate-200 transition">⬇ MD</button>
-              <button @click="exportApiDocs('txt')" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-emerald-700 text-slate-200 transition">⬇ TXT</button>
-              <button @click="exportApiDocs('csv')" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-emerald-700 text-slate-200 transition">⬇ CSV</button>
-            </div>
+          <div class="flex gap-1.5 text-xs ml-auto">
+            <button @click="exportApiDocs('md')" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-emerald-700 text-slate-200 transition">⬇ MD</button>
+            <button @click="exportApiDocs('txt')" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-emerald-700 text-slate-200 transition">⬇ TXT</button>
+            <button @click="exportApiDocs('csv')" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-emerald-700 text-slate-200 transition">⬇ CSV</button>
           </div>
         </div>
 
@@ -560,15 +551,26 @@
                 <span class="px-2 py-0.5 rounded font-mono font-bold bg-indigo-600 text-white" x-text="activeEndpoint().method"></span>
                 <code class="text-indigo-300 font-mono" x-text="location.origin + activeEndpoint().path"></code>
               </div>
-              <button @click="copyText(location.origin + activeEndpoint().path)"
-                class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200">Copy URL</button>
+              <div class="flex flex-wrap items-center gap-1.5">
+                <template x-for="lang in ['curl', 'python', 'javascript', 'php', 'go']" :key="lang">
+                  <button @click="apiLang = lang"
+                    :class="apiLang === lang ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'"
+                    class="px-2.5 py-1 rounded-md font-medium uppercase text-[11px] transition" x-text="lang"></button>
+                </template>
+                <button @click="copyText(location.origin + activeEndpoint().path)"
+                  class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 ml-1">Copy URL</button>
+              </div>
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
               <div class="space-y-1">
-                <div class="text-slate-400 font-medium">Sample Headers & Request</div>
+                <div class="flex items-center justify-between text-slate-400 font-medium">
+                  <span>Sample Request (<span class="uppercase text-indigo-300" x-text="apiLang"></span>)</span>
+                  <button @click="copyText(endpointCode(activeEndpoint()))"
+                    class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px]">Copy Code</button>
+                </div>
                 <pre class="bg-slate-900 border border-slate-800 rounded-xl p-3 overflow-x-auto text-indigo-300 leading-relaxed"
-                  x-text="activeEndpoint().request"></pre>
+                  x-text="endpointCode(activeEndpoint())"></pre>
               </div>
               <div class="space-y-1">
                 <div class="text-slate-400 font-medium">Sample Response (<span class="text-emerald-400" x-text="activeEndpoint().status"></span>)</div>
@@ -590,31 +592,6 @@
             </div>
           </div>
         </template>
-
-        <!-- Code Snippets -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 text-xs">
-          <div class="space-y-1.5">
-            <div class="flex items-center justify-between">
-              <span class="text-slate-300 font-medium">1. Text-to-Speech — <code class="text-indigo-300">POST /v1/audio/speech</code></span>
-              <button @click="copyText(apiSnippet('tts'))" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200">Copy</button>
-            </div>
-            <pre class="bg-slate-950 border border-slate-800 rounded-xl p-3.5 overflow-x-auto text-indigo-300 leading-relaxed" x-text="apiSnippet('tts')"></pre>
-          </div>
-          <div class="space-y-1.5">
-            <div class="flex items-center justify-between">
-              <span class="text-slate-300 font-medium">2. Whisper STT — <code class="text-teal-300">POST /v1/audio/transcriptions</code></span>
-              <button @click="copyText(apiSnippet('stt'))" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200">Copy</button>
-            </div>
-            <pre class="bg-slate-950 border border-slate-800 rounded-xl p-3.5 overflow-x-auto text-teal-300 leading-relaxed" x-text="apiSnippet('stt')"></pre>
-          </div>
-          <div class="lg:col-span-2 space-y-1.5">
-            <div class="flex items-center justify-between">
-              <span class="text-slate-300 font-medium">3. Async Job Queue, Progress & Webhook — <code class="text-amber-300">POST /v1/jobs/speech</code> (default dari <code>WEBHOOK_URL</code> di <code>.env</code> atau kirim <code>webhook_url</code> per-request)</span>
-              <button @click="copyText(apiSnippet('jobs'))" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200">Copy</button>
-            </div>
-            <pre class="bg-slate-950 border border-slate-800 rounded-xl p-3.5 overflow-x-auto text-amber-300 leading-relaxed" x-text="apiSnippet('jobs')"></pre>
-          </div>
-        </div>
       </div>
     </section>
 
@@ -1153,6 +1130,50 @@
         activeEndpoint() {
           if (!this.selectedEp) return null;
           return this.apiEndpoints().find(e => e.id === this.selectedEp) || null;
+        },
+        endpointCode(ep) {
+          if (!ep) return '';
+          if (ep.id === 'speech') return this.apiSnippet('tts');
+          if (ep.id === 'transcriptions') return this.apiSnippet('stt');
+          if (ep.id === 'jobs_speech') return this.apiSnippet('jobs');
+
+          const base = location.origin;
+          const auth = this.sys.api_auth_enabled;
+          const key = this.sys.api_key || 'YOUR_API_KEY';
+          const url = base + ep.path;
+
+          if (ep.id === 'jobs_stt') {
+            if (this.apiLang === 'curl') {
+              return `curl -X POST ${url} \\\n${auth ? `  -H "Authorization: Bearer ${key}" \\\n` : ''}  -F "file_url=https://example.com/audio.mp3" \\\n  -F "model=base" -F "language=id"`;
+            }
+            if (this.apiLang === 'python') {
+              return `import requests\n\nres = requests.post(\n    "${url}",${auth ? `\n    headers={"Authorization": "Bearer ${key}"},` : ''}\n    data={"file_url": "https://example.com/audio.mp3", "model": "base", "language": "id"},\n)\nprint(res.json())`;
+            }
+            if (this.apiLang === 'javascript') {
+              return `const form = new FormData();\nform.append("file_url", "https://example.com/audio.mp3");\nform.append("model", "base");\nform.append("language", "id");\nconst res = await fetch("${url}", { method: "POST"${auth ? `, headers: { "Authorization": "Bearer ${key}" }` : ''}, body: form });\nconsole.log(await res.json());`;
+            }
+            if (this.apiLang === 'php') {
+              return `<?php\n$ch = curl_init("${url}");\ncurl_setopt_array($ch, [\n  CURLOPT_POST => true, CURLOPT_RETURNTRANSFER => true,${auth ? `\n  CURLOPT_HTTPHEADER => ["Authorization: Bearer ${key}"],` : ''}\n  CURLOPT_POSTFIELDS => ["file_url" => "https://example.com/audio.mp3", "model" => "base", "language" => "id"],\n]);\necho curl_exec($ch);`;
+            }
+            return `// POST multipart/form-data ke ${url}\n// Field: file=@audio.mp3 atau file_url=..., model=base, language=id`;
+          }
+
+          // GET endpoints (/v1/models, /v1/jobs/{job_id}, /v1/jobs/{job_id}/result, /health)
+          const useAuth = auth && ep.id !== 'health';
+          const outFlag = ep.id === 'job_result' ? ' --output hasil.mp3' : '';
+          if (this.apiLang === 'curl') {
+            return `curl ${url}${useAuth ? ` \\\n  -H "Authorization: Bearer ${key}"` : ''}${outFlag}`;
+          }
+          if (this.apiLang === 'python') {
+            return `import requests\n\nres = requests.get("${url}"${useAuth ? `, headers={"Authorization": "Bearer ${key}"}` : ''})\nprint(res.json() if "json" in res.headers.get("content-type", "") else len(res.content))`;
+          }
+          if (this.apiLang === 'javascript') {
+            return `const res = await fetch("${url}"${useAuth ? `, { headers: { "Authorization": "Bearer ${key}" } }` : ''});\nconsole.log(await res.text());`;
+          }
+          if (this.apiLang === 'php') {
+            return `<?php\n$ch = curl_init("${url}");\ncurl_setopt($ch, CURLOPT_RETURNTRANSFER, true);${useAuth ? `\ncurl_setopt($ch, CURLOPT_HTTPHEADER, ["Authorization: Bearer ${key}"]);` : ''}\necho curl_exec($ch);`;
+          }
+          return `package main\nimport ("io"; "net/http"; "os")\nfunc main() {\n  req, _ := http.NewRequest("GET", "${url}", nil)${useAuth ? `\n  req.Header.Set("Authorization", "Bearer ${key}")` : ''}\n  resp, _ := http.DefaultClient.Do(req)\n  defer resp.Body.Close()\n  io.Copy(os.Stdout, resp.Body)\n}`;
         },
         apiEndpoints() {
           const authHdr = this.sys.api_auth_enabled ? `Authorization: Bearer ${this.sys.api_key || 'YOUR_API_KEY'}\n` : '';
