@@ -404,6 +404,7 @@
                   <span class="text-slate-500" x-text="item.created_at"></span>
                 </div>
                 <div class="flex items-center gap-1.5">
+                  <button @click="viewTranscript(item)" class="px-2.5 py-1 rounded-md bg-indigo-600/80 hover:bg-indigo-500 text-white">👁 Lihat</button>
                   <button @click="copyText(item.output_text)" class="px-2 py-1 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-200">Copy</button>
                   <button @click="downloadHistoryText(item, 'txt')" class="px-2 py-1 rounded-md bg-slate-800 hover:bg-teal-600 text-slate-200">⬇ TXT</button>
                   <button @click="downloadHistoryText(item, 'csv')" class="px-2 py-1 rounded-md bg-slate-800 hover:bg-teal-600 text-slate-200">⬇ CSV</button>
@@ -681,6 +682,37 @@
     </div>
   </div>
 
+  <!-- View Transcript Modal -->
+  <div x-show="viewModal.open" x-transition.opacity
+    class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+    style="display: none;">
+    <div @click.outside="viewModal.open = false"
+      class="w-full max-w-2xl bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4 shadow-2xl">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h3 class="text-sm font-semibold text-slate-100">Detail Transkrip</h3>
+          <p class="text-xs text-slate-400 mt-0.5"
+            x-text="viewModal.item ? `${viewModal.item.input_text || 'audio'} · ${viewModal.item.model || 'whisper'} · ${viewModal.item.language || '-'} · ${viewModal.item.duration_sec || 0}s` : ''"></p>
+        </div>
+        <button type="button" @click="viewModal.open = false" class="text-slate-400 hover:text-slate-200 text-sm">✕</button>
+      </div>
+      <textarea readonly rows="10" :value="viewModal.item?.output_text || ''"
+        class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm text-slate-200 focus:outline-none"></textarea>
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <div class="flex gap-2 text-xs">
+          <button type="button" @click="copyText(viewModal.item?.output_text || '')"
+            class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200">Copy Text</button>
+          <button type="button" @click="downloadHistoryText(viewModal.item, 'txt')"
+            class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-teal-600 text-slate-200">⬇ TXT</button>
+          <button type="button" @click="downloadHistoryText(viewModal.item, 'csv')"
+            class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-teal-600 text-slate-200">⬇ CSV</button>
+        </div>
+        <button type="button" @click="viewModal.open = false"
+          class="px-4 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs font-medium text-white">Tutup</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     function app() {
       return {
@@ -692,6 +724,7 @@
         sttHist: { items: [], page: 1, total: 0, total_pages: 1, selected: [] },
         toast: { msg: '', type: 'ok' },
         confirmModal: { open: false, title: '', message: '', onConfirm: null },
+        viewModal: { open: false, item: null },
         tts: {
           engine: 'kokoro',
           voice: 'af_heart',
@@ -881,6 +914,9 @@
         toggleSelectAll(kind, checked) {
           const st = this.histState(kind);
           st.selected = checked ? st.items.map(i => i.id) : [];
+        },
+        viewTranscript(item) {
+          this.viewModal = { open: true, item };
         },
         askConfirm(title, message, onConfirm) {
           this.confirmModal = { open: true, title, message, onConfirm };
