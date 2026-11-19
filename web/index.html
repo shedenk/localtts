@@ -319,7 +319,12 @@
           <input type="file" accept="audio/*,video/*" @change="stt.file = $event.target.files[0]"
             class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-slate-800 file:text-slate-200" />
         </div>
-        <button @click="transcribeSTT()" :disabled="stt.loading || !stt.file"
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Or Audio / Video URL</label>
+          <input x-model="stt.file_url" type="url" placeholder="https://example.com/audio.mp3"
+            class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500" />
+        </div>
+        <button @click="transcribeSTT()" :disabled="stt.loading || (!stt.file && !stt.file_url.trim())"
           class="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-sm font-medium transition">
           <span x-show="!stt.loading">Transcribe Audio</span>
           <span x-show="stt.loading">Transcribing...</span>
@@ -529,7 +534,7 @@
               <tr>
                 <td class="py-2 pr-3 font-mono text-indigo-400">POST</td>
                 <td class="py-2 pr-3 font-mono">/v1/audio/transcriptions</td>
-                <td class="py-2">Whisper STT multipart: <code>file</code>, <code>model</code> (<code>tiny</code>/<code>base</code>/<code>small</code>/<code>medium</code>/<code>large-v3-turbo</code>), <code>language</code> (<code>id</code>/<code>en</code>), <code>response_format</code> (<code>json</code>/<code>text</code>/<code>srt</code>/<code>verbose_json</code>).</td>
+                <td class="py-2">Whisper STT multipart: <code>file</code> atau <code>file_url</code> (http/https), <code>model</code> (<code>tiny</code>/<code>base</code>/<code>small</code>/<code>medium</code>/<code>large-v3-turbo</code>), <code>language</code> (<code>id</code>/<code>en</code>), <code>response_format</code> (<code>json</code>/<code>text</code>/<code>srt</code>/<code>verbose_json</code>).</td>
               </tr>
               <tr>
                 <td class="py-2 pr-3 font-mono text-emerald-400">GET</td>
@@ -760,6 +765,7 @@
           model_size: 'base',
           language: 'auto',
           file: null,
+          file_url: '',
           loading: false,
           result: null,
         },
@@ -882,7 +888,8 @@
           }
           try {
             const fd = new FormData();
-            fd.append('file', this.stt.file);
+            if (this.stt.file) fd.append('file', this.stt.file);
+            if (this.stt.file_url.trim()) fd.append('file_url', this.stt.file_url.trim());
             fd.append('model_size', this.stt.model_size);
             fd.append('language', this.stt.language);
 

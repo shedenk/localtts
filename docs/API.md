@@ -172,19 +172,28 @@ Mengubah file audio/video menjadi teks menggunakan `faster-whisper`.
 **Form Fields (`multipart/form-data`):**
 | Field | Type | Default | Keterangan |
 | :--- | :--- | :--- | :--- |
-| `file` | file | *(wajib)* | File audio/video (`mp3`, `wav`, `m4a`, `ogg`, `mp4`, dll) |
+| `file` | file | *(opsional)* | File audio/video (`mp3`, `wav`, `m4a`, `ogg`, `mp4`, dll) — wajib jika `file_url` kosong |
+| `file_url` | string | *(opsional)* | URL publik (`http://` / `https://`) ke file audio/video (maks. 100 MB) — wajib jika `file` kosong |
 | `model` | string | `"base"` | `tiny`, `base`, `small`, `medium`, `large-v3-turbo` |
 | `language` | string | `null` | Kode bahasa (`id`, `en`) atau kosongkan untuk *auto-detect* |
 | `response_format` | string | `"json"` | `json`, `text`, `srt`, `verbose_json` |
 
-**Contoh `curl`:**
+**Contoh `curl` (Upload File atau dari URL):**
 ```bash
+# Upload file langsung
 curl -X POST http://localhost:8000/v1/audio/transcriptions \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -F file=@rekaman.mp3 \
   -F model=base \
   -F language=id \
   -F response_format=verbose_json
+
+# Atau ambil file dari URL
+curl -X POST http://localhost:8000/v1/audio/transcriptions \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -F file_url="https://example.com/rekaman.mp3" \
+  -F model=base \
+  -F language=id
 ```
 
 **Contoh Python (`requests`):**

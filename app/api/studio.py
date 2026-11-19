@@ -339,10 +339,13 @@ async def studio_tts_generate(
 
 @router.post("/stt/transcribe")
 async def studio_stt_transcribe(
-    file: UploadFile = File(...),
+    file: Optional[UploadFile] = File(default=None),
+    file_url: Optional[str] = Form(default=None),
     model_size: str = Form(default="base"),
     language: str = Form(default="auto"),
 ):
+    from app.api.openai_compat import _download_audio_url
+
     mgr = get_manager()
     t0 = time.perf_counter()
 
@@ -357,9 +360,25 @@ async def studio_stt_transcribe(
             detail=f"Whisper engine is not installed. Run: {stt.install_hint}",
         )
 
-    suffix = Path(file.filename or "audio.wav").suffix or ".wav"
+    if (file is None or not file.filename) and not (file_url and file_url.strip()):
+        raise HTTPException(status_code=400, detail="Provide either a file upload or file_url.")
+
+    if file is not None and file.filename:
+        raw_bytes = await file.read()
+        suffix = Path(file.filename).suffix or ".wav"
+        source_label = file.filename
+    else:
+        assert file_url is not None
+        try:
+            raw_bytes, suffix = await run_in_threadpool(_download_audio_url, file_url)
+        except HTTPException:
+            raise
+        except Exception as exc:
+            raise HTTPException(status_code=400, detail=f"Failed to download file_url: {exc}") from exc
+        source_label = file_url.strip()
+
     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
-        tmp.write(await file.read())
+        tmp.write(raw_bytes)
         tmp_path = tmp.name
 
     try:
@@ -378,7 +397,7 @@ async def studio_stt_transcribe(
         engine="whisper",
         model=model_size,
         language=res.language,
-        input_text=file.filename or "audio",
+        input_text=source_label,
         output_text=res.text,
         fmt="json",
         duration_sec=res.duration_sec,

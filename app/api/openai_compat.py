@@ -6,7 +6,9 @@ import time
 import uuid
 from pathlib import Path
 from typing import Optional
+from urllib.parse import urlparse
 
+import httpx
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
@@ -123,9 +125,25 @@ def _format_srt(segments: list[dict]) -> str:
     return "\n".join(lines)
 
 
+def _download_audio_url(url: str, max_bytes: int = 100 * 1024 * 1024) -> tuple[bytes, str]:
+    parsed = urlparse(url.strip())
+    if parsed.scheme not in ("http", "https") or not parsed.netloc:
+        raise HTTPException(status_code=400, detail="Invalid file_url. Must be http:// or https://.")
+    suffix = Path(parsed.path).suffix or ".mp3"
+    with httpx.stream("GET", url.strip(), follow_redirects=True, timeout=60.0) as resp:
+        resp.raise_for_status()
+        chunks = bytearray()
+        for chunk in resp.iter_bytes(chunk_size=65536):
+            chunks.extend(chunk)
+            if len(chunks) > max_bytes:
+                raise HTTPException(status_code=413, detail="Remote file exceeds 100 MB limit.")
+    return bytes(chunks), suffix
+
+
 @router.post("/audio/transcriptions")
 async def create_transcription(
-    file: UploadFile = File(...),
+    file: Optional[UploadFile] = File(default=None),
+    file_url: Optional[str] = Form(default=None),
     model: str = Form(default="base"),
     language: Optional[str] = Form(default=None),
     response_format: str = Form(default="json"),
@@ -144,11 +162,26 @@ async def create_transcription(
             detail=f"Whisper engine is not installed. {engine.install_hint}",
         )
 
+    if (file is None or not file.filename) and not (file_url and file_url.strip()):
+        raise HTTPException(status_code=400, detail="Provide either 'file' upload or 'file_url'.")
+
     model_size = get_settings().whisper_default_model if model in ("whisper-1", "whisper", "") else model
-    suffix = Path(file.filename or "audio.wav").suffix or ".wav"
+    if file is not None and file.filename:
+        raw_bytes = await file.read()
+        suffix = Path(file.filename).suffix or ".wav"
+        source_label = file.filename
+    else:
+        assert file_url is not None
+        try:
+            raw_bytes, suffix = await run_in_threadpool(_download_audio_url, file_url)
+        except HTTPException:
+            raise
+        except Exception as exc:
+            raise HTTPException(status_code=400, detail=f"Failed to download file_url: {exc}") from exc
+        source_label = file_url.strip()
 
     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
-        tmp.write(await file.read())
+        tmp.write(raw_bytes)
         tmp_path = tmp.name
 
     try:
@@ -168,7 +201,7 @@ async def create_transcription(
         engine="whisper",
         model=model_size,
         language=res.language,
-        input_text=file.filename or "upload",
+        input_text=source_label,
         output_text=res.text,
         fmt=response_format,
         duration_sec=res.duration_sec,
