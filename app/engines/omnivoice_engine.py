@@ -102,9 +102,9 @@ class OmniVoiceEngine(BaseTTSEngine):
         elif instruct:
             kwargs["instruct"] = instruct
         elif voice in ("id_female", "en_female", "female_warm"):
-            kwargs["instruct"] = "female, warm, clear, natural speaking voice"
+            kwargs["instruct"] = "female, young adult, moderate pitch"
         elif voice in ("id_male", "en_male", "male_calm"):
-            kwargs["instruct"] = "male, calm, clear, natural speaking voice"
+            kwargs["instruct"] = "male, young adult, moderate pitch"
 
         audio = self._model.generate(**kwargs)
         # OmniVoice typically returns (samples, sr) or tensor
