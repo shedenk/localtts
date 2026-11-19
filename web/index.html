@@ -7,6 +7,19 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script>
+  <style>
+    .readme-prose h1 { font-size: 1.125rem; font-weight: 700; color: #fff; margin-bottom: 0.5rem; }
+    .readme-prose h2 { font-size: 0.95rem; font-weight: 600; color: #a5b4fc; margin-top: 1rem; margin-bottom: 0.4rem; }
+    .readme-prose h3 { font-size: 0.85rem; font-weight: 600; color: #e2e8f0; margin-top: 0.75rem; margin-bottom: 0.3rem; }
+    .readme-prose p, .readme-prose ul, .readme-prose ol { margin-bottom: 0.5rem; }
+    .readme-prose ul { list-style: disc; padding-left: 1.25rem; }
+    .readme-prose ol { list-style: decimal; padding-left: 1.25rem; }
+    .readme-prose pre { background: #0f172a; padding: 0.75rem; border-radius: 0.5rem; overflow-x: auto; margin: 0.5rem 0; }
+    .readme-prose code { color: #a5b4fc; font-family: monospace; }
+    .readme-prose table { width: 100%; border-collapse: collapse; margin: 0.5rem 0; }
+    .readme-prose th, .readme-prose td { border-bottom: 1px solid #1e293b; padding: 0.4rem 0.5rem; text-align: left; }
+    .readme-prose a { color: #818cf8; text-decoration: underline; }
+  </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen" x-data="app()" x-init="init()">
   <!-- Top Bar -->
@@ -708,8 +721,8 @@
             class="text-xs px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300"
             x-text="showReadmeRaw ? 'Rendered View' : 'Raw Markdown'"></button>
         </div>
-        <div x-show="!showReadmeRaw" x-html="readmeHtml"
-          class="bg-slate-950 border border-slate-800 rounded-xl p-4 text-xs text-slate-300 leading-relaxed max-h-[520px] overflow-y-auto space-y-2 [&_h1]:text-base [&_h1]:font-bold [&_h1]:text-white [&_h2]:text-sm [&_h2]:font-semibold [&_h2]:text-indigo-300 [&_h2]:pt-3 [&_h3]:text-xs [&_h3]:font-semibold [&_h3]:text-slate-200 [&_h3]:pt-2 [&_pre]:bg-slate-900 [&_pre]:p-3 [&_pre]:rounded-lg [&_pre]:overflow-x-auto [&_code]:text-indigo-300 [&_code]:font-mono [&_table]:w-full [&_table]:border-collapse [&_th]:text-left [&_th]:border-b [&_th]:border-slate-800 [&_th]:py-1.5 [&_td]:border-b [&_td]:border-slate-800/60 [&_td]:py-1.5 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_a]:text-indigo-400 [&_a]:underline"></div>
+        <div x-show="!showReadmeRaw" x-html="readmeHtml || '<p class=\'text-slate-500\'>Memuat README.md...</p>'"
+          class="readme-prose bg-slate-950 border border-slate-800 rounded-xl p-4 text-xs text-slate-300 leading-relaxed max-h-[520px] overflow-y-auto"></div>
         <pre x-show="showReadmeRaw" x-text="readmeRaw"
           class="bg-slate-950 border border-slate-800 rounded-xl p-4 text-xs text-slate-300 overflow-x-auto max-h-[520px] overflow-y-auto"></pre>
       </div>
@@ -844,6 +857,7 @@
           await this.loadSystem();
           await this.loadClones();
           await this.loadHistory('tts');
+          this.loadReadme();
           this.onEngineChange();
         },
         notify(msg, type = 'ok', duration = 5000) {
@@ -860,7 +874,10 @@
         async loadReadme() {
           if (this.readmeRaw) return;
           const res = await fetch('/api/readme');
-          if (!res.ok) return;
+          if (!res.ok) {
+            this.readmeHtml = `<p class="text-rose-400">Gagal memuat /api/readme (status ${res.status}). Pastikan server sudah di-restart.</p>`;
+            return;
+          }
           const data = await res.json();
           this.readmeRaw = data.content || '';
           this.readmeHtml = (window.marked && window.marked.parse)
