@@ -65,12 +65,19 @@ def _extract_api_key(request: Request) -> str | None:
 
 
 def require_ui_auth(request: Request) -> None:
-    """Protect Studio UI & internal /api/* endpoints."""
-    if not is_ui_authenticated(request):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Unauthorized. Please login first.",
-        )
+    """Protect Studio UI & internal /api/* endpoints.
+    Accepts valid session cookie OR valid API key header.
+    """
+    if is_ui_authenticated(request):
+        return
+    settings = get_settings()
+    provided = _extract_api_key(request)
+    if provided and settings.api_auth_enabled and secrets.compare_digest(provided, settings.api_key):
+        return
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Unauthorized. Please login first or provide a valid API key.",
+    )
 
 
 def require_api_auth(request: Request) -> None:
