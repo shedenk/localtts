@@ -522,8 +522,9 @@
           </div>
         </div>
 
-        <!-- Endpoint Summary -->
+        <!-- Interactive Endpoint Table -->
         <div class="overflow-x-auto">
+          <div class="text-[11px] text-slate-400 mb-1.5">Klik baris endpoint di bawah untuk melihat detail Sample URL, Request, Response, & Error Code:</div>
           <table class="w-full text-xs text-left border-collapse">
             <thead>
               <tr class="border-b border-slate-800 text-slate-400">
@@ -533,49 +534,62 @@
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-800/70 text-slate-300">
-              <tr>
-                <td class="py-2 pr-3 font-mono text-emerald-400">GET</td>
-                <td class="py-2 pr-3 font-mono">/v1/models</td>
-                <td class="py-2">Daftar engine yang siap dipakai (<code>kokoro</code>, <code>edge</code>, <code>omnivoice</code>, <code>qwen3</code>, <code>whisper</code>).</td>
-              </tr>
-              <tr>
-                <td class="py-2 pr-3 font-mono text-indigo-400">POST</td>
-                <td class="py-2 pr-3 font-mono">/v1/audio/speech</td>
-                <td class="py-2">TTS JSON: <code>model</code>, <code>input</code>, <code>voice</code>, <code>language</code> (<code>en-us</code>/<code>id</code>), <code>response_format</code> (<code>mp3</code>/<code>wav</code>/<code>opus</code>/<code>flac</code>), <code>speed</code>.</td>
-              </tr>
-              <tr>
-                <td class="py-2 pr-3 font-mono text-indigo-400">POST</td>
-                <td class="py-2 pr-3 font-mono">/v1/audio/transcriptions</td>
-                <td class="py-2">Whisper STT multipart: <code>file</code> atau <code>file_url</code> (http/https), <code>model</code> (<code>tiny</code>/<code>base</code>/<code>small</code>/<code>medium</code>/<code>large-v3-turbo</code>), <code>language</code> (<code>id</code>/<code>en</code>), <code>response_format</code> (<code>json</code>/<code>text</code>/<code>srt</code>/<code>verbose_json</code>).</td>
-              </tr>
-              <tr>
-                <td class="py-2 pr-3 font-mono text-emerald-400">GET</td>
-                <td class="py-2 pr-3 font-mono">/health</td>
-                <td class="py-2">Healthcheck server (tanpa auth, untuk Docker/Coolify).</td>
-              </tr>
-              <tr>
-                <td class="py-2 pr-3 font-mono text-amber-400">POST</td>
-                <td class="py-2 pr-3 font-mono">/v1/jobs/speech</td>
-                <td class="py-2">Async Queue TTS (langsung return <code>job_id</code> + <code>queue_position</code>, opsional <code>webhook_url</code>).</td>
-              </tr>
-              <tr>
-                <td class="py-2 pr-3 font-mono text-amber-400">POST</td>
-                <td class="py-2 pr-3 font-mono">/v1/jobs/transcriptions</td>
-                <td class="py-2">Async Queue Whisper STT (<code>file</code> / <code>file_url</code> + opsional <code>webhook_url</code>).</td>
-              </tr>
-              <tr>
-                <td class="py-2 pr-3 font-mono text-emerald-400">GET</td>
-                <td class="py-2 pr-3 font-mono">/v1/jobs/{job_id}</td>
-                <td class="py-2">Cek progress (<code>0–100%</code>), <code>stage</code>, <code>queue_position</code>, & <code>result</code>.</td>
-              </tr>
-              <tr>
-                <td class="py-2 pr-3 font-mono text-emerald-400">GET</td>
-                <td class="py-2 pr-3 font-mono">/v1/jobs/{job_id}/result</td>
-                <td class="py-2">Ambil file audio TTS atau hasil transkrip STT setelah <code>status == "completed"</code>.</td>
-              </tr>
+              <template x-for="ep in apiEndpoints()" :key="ep.id">
+                <tr @click="selectedEp = (selectedEp === ep.id ? '' : ep.id)"
+                  class="cursor-pointer transition"
+                  :class="selectedEp === ep.id ? 'bg-indigo-950/50' : 'hover:bg-slate-800/50'">
+                  <td class="py-2.5 pr-3 font-mono font-semibold"
+                    :class="ep.method==='GET' ? 'text-emerald-400' : (ep.path.startsWith('/v1/jobs') ? 'text-amber-400' : 'text-indigo-400')"
+                    x-text="ep.method"></td>
+                  <td class="py-2.5 pr-3 font-mono text-slate-100" x-text="ep.path"></td>
+                  <td class="py-2.5 flex items-center justify-between gap-2">
+                    <span x-text="ep.summary"></span>
+                    <span class="text-[10px] text-indigo-400 shrink-0" x-text="selectedEp === ep.id ? '▲ Tutup' : '▼ Detail'"></span>
+                  </td>
+                </tr>
+              </template>
             </tbody>
           </table>
         </div>
+
+        <!-- Endpoint Detail Inspector -->
+        <template x-if="activeEndpoint()">
+          <div class="bg-slate-950 border border-indigo-500/50 rounded-2xl p-4 space-y-3 text-xs">
+            <div class="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-800">
+              <div class="flex items-center gap-2">
+                <span class="px-2 py-0.5 rounded font-mono font-bold bg-indigo-600 text-white" x-text="activeEndpoint().method"></span>
+                <code class="text-indigo-300 font-mono" x-text="location.origin + activeEndpoint().path"></code>
+              </div>
+              <button @click="copyText(location.origin + activeEndpoint().path)"
+                class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200">Copy URL</button>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+              <div class="space-y-1">
+                <div class="text-slate-400 font-medium">Sample Headers & Request</div>
+                <pre class="bg-slate-900 border border-slate-800 rounded-xl p-3 overflow-x-auto text-indigo-300 leading-relaxed"
+                  x-text="activeEndpoint().request"></pre>
+              </div>
+              <div class="space-y-1">
+                <div class="text-slate-400 font-medium">Sample Response (<span class="text-emerald-400" x-text="activeEndpoint().status"></span>)</div>
+                <pre class="bg-slate-900 border border-slate-800 rounded-xl p-3 overflow-x-auto text-emerald-300 leading-relaxed"
+                  x-text="activeEndpoint().response"></pre>
+              </div>
+            </div>
+
+            <div class="space-y-1">
+              <div class="text-slate-400 font-medium">Error Codes</div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                <template x-for="err in activeEndpoint().errors" :key="err.code">
+                  <div class="bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-2 flex items-start gap-2">
+                    <span class="font-mono font-bold text-rose-400 shrink-0" x-text="err.code"></span>
+                    <span class="text-slate-300" x-text="err.desc"></span>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </div>
+        </template>
 
         <!-- Code Snippets -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 text-xs">
@@ -789,6 +803,7 @@
       return {
         tab: 'tts',
         apiLang: 'curl',
+        selectedEp: 'speech',
         sys: {},
         readmeRaw: '',
         readmeHtml: '',
@@ -1134,6 +1149,126 @@
         async logout() {
           await fetch('/api/auth/logout', { method: 'POST' });
           window.location.href = '/login';
+        },
+        activeEndpoint() {
+          if (!this.selectedEp) return null;
+          return this.apiEndpoints().find(e => e.id === this.selectedEp) || null;
+        },
+        apiEndpoints() {
+          const authHdr = this.sys.api_auth_enabled ? `Authorization: Bearer ${this.sys.api_key || 'YOUR_API_KEY'}\n` : '';
+          return [
+            {
+              id: 'models',
+              method: 'GET',
+              path: '/v1/models',
+              summary: 'Daftar engine yang siap dipakai (kokoro, edge, omnivoice, qwen3, whisper).',
+              status: '200 OK',
+              request: `${authHdr}// No body required`,
+              response: `{\n  "object": "list",\n  "data": [\n    {"id": "kokoro", "object": "model", "owned_by": "local"},\n    {"id": "edge", "object": "model", "owned_by": "local"},\n    {"id": "whisper", "object": "model", "owned_by": "local"}\n  ]\n}`,
+              errors: [
+                { code: '401', desc: 'Invalid or missing API key (jika API_KEY diisi di .env).' },
+              ],
+            },
+            {
+              id: 'speech',
+              method: 'POST',
+              path: '/v1/audio/speech',
+              summary: 'TTS JSON: model, input, voice, language, response_format, speed.',
+              status: '200 OK (Binary Audio)',
+              request: `${authHdr}Content-Type: application/json\n\n{\n  "model": "edge",\n  "input": "Halo dari LocalTTS!",\n  "voice": "id-ID-GadisNeural",\n  "language": "id",\n  "response_format": "mp3",\n  "speed": 1.0\n}`,
+              response: `Content-Type: audio/mpeg\nX-Process-Seconds: 0.642\nX-Audio-Duration: 2.350\n\n<binary mp3/wav/opus/flac audio stream>`,
+              errors: [
+                { code: '400', desc: 'Model/engine tidak dikenal atau bukan TTS engine.' },
+                { code: '401', desc: 'API key tidak valid / tidak dikirim.' },
+                { code: '413', desc: `Teks melebihi batas TTS_MAX_CHARS (${this.sys.tts_max_chars || 5000} chars).` },
+                { code: '503', desc: 'Engine belum terinstall di server.' },
+                { code: '500', desc: 'Proses sintesis audio gagal.' },
+              ],
+            },
+            {
+              id: 'transcriptions',
+              method: 'POST',
+              path: '/v1/audio/transcriptions',
+              summary: 'Whisper STT multipart: file atau file_url, model, language, response_format.',
+              status: '200 OK',
+              request: `${authHdr}Content-Type: multipart/form-data\n\nfile=@audio.mp3   (atau file_url="https://example.com/a.mp3")\nmodel=base\nlanguage=id\nresponse_format=verbose_json`,
+              response: `{\n  "text": "Halo ini adalah contoh transkrip.",\n  "language": "id",\n  "duration": 4.2,\n  "segments": [{"id": 1, "start": 0.0, "end": 4.2, "text": "Halo ini adalah contoh transkrip."}],\n  "process_sec": 0.85\n}`,
+              errors: [
+                { code: '400', desc: 'file & file_url kosong, atau URL bukan http/https.' },
+                { code: '401', desc: 'API key tidak valid / tidak dikirim.' },
+                { code: '413', desc: `File melebihi batas STT_MAX_FILE_MB (${this.sys.stt_max_file_mb || 50} MB).` },
+                { code: '503', desc: 'Engine Whisper belum terinstall.' },
+              ],
+            },
+            {
+              id: 'jobs_speech',
+              method: 'POST',
+              path: '/v1/jobs/speech',
+              summary: 'Async Queue TTS (return job_id, queue_position, opsional webhook_url).',
+              status: '202 Accepted',
+              request: `${authHdr}Content-Type: application/json\n\n{\n  "model": "omnivoice",\n  "input": "Teks panjang diproses di antrian...",\n  "voice": "id_female",\n  "language": "id",\n  "webhook_url": "https://example.com/webhook"\n}`,
+              response: `{\n  "job_id": "job_133614501c17",\n  "kind": "tts",\n  "status": "queued",\n  "progress": 0,\n  "queue_position": 1,\n  "status_url": "/v1/jobs/job_133614501c17",\n  "result_url": "/v1/jobs/job_133614501c17/result"\n}`,
+              errors: [
+                { code: '400', desc: 'Model/engine invalid atau webhook_url bukan http/https.' },
+                { code: '401', desc: 'API key tidak valid / tidak dikirim.' },
+                { code: '413', desc: `Teks melebihi batas TTS_MAX_CHARS.` },
+                { code: '503', desc: 'Engine belum terinstall.' },
+              ],
+            },
+            {
+              id: 'jobs_stt',
+              method: 'POST',
+              path: '/v1/jobs/transcriptions',
+              summary: 'Async Queue Whisper STT (file / file_url + opsional webhook_url).',
+              status: '202 Accepted',
+              request: `${authHdr}Content-Type: multipart/form-data\n\nfile_url=https://example.com/podcast.mp3\nmodel=base\nlanguage=id\nwebhook_url=https://example.com/webhook`,
+              response: `{\n  "job_id": "job_99aa11bb22cc",\n  "kind": "stt",\n  "status": "queued",\n  "progress": 0,\n  "queue_position": 2,\n  "status_url": "/v1/jobs/job_99aa11bb22cc",\n  "result_url": "/v1/jobs/job_99aa11bb22cc/result"\n}`,
+              errors: [
+                { code: '400', desc: 'file/file_url kosong atau URL invalid.' },
+                { code: '401', desc: 'API key tidak valid.' },
+                { code: '413', desc: `File melebihi batas STT_MAX_FILE_MB.` },
+              ],
+            },
+            {
+              id: 'job_status',
+              method: 'GET',
+              path: '/v1/jobs/{job_id}',
+              summary: 'Cek progress (0-100%), stage, queue_position, & result.',
+              status: '200 OK',
+              request: `${authHdr}// Ganti {job_id} dengan job_id dari response 202`,
+              response: `{\n  "job_id": "job_133614501c17",\n  "kind": "tts",\n  "status": "completed",\n  "progress": 100,\n  "stage": "done",\n  "queue_position": 0,\n  "result": {"generation_id": 12, "duration_sec": 3.1, "result_url": "/v1/jobs/job_133614501c17/result"},\n  "error": ""\n}`,
+              errors: [
+                { code: '401', desc: 'API key tidak valid.' },
+                { code: '404', desc: 'job_id tidak ditemukan.' },
+              ],
+            },
+            {
+              id: 'job_result',
+              method: 'GET',
+              path: '/v1/jobs/{job_id}/result',
+              summary: 'Ambil file audio TTS atau hasil transkrip STT setelah completed.',
+              status: '200 OK',
+              request: `${authHdr}// Download audio TTS atau JSON/SRT transkrip STT`,
+              response: `TTS -> Binary Audio (audio/mpeg / audio/wav)\nSTT -> {"text": "...", "language": "id", "segments": [...]}`,
+              errors: [
+                { code: '202', desc: 'Job masih queued / processing (belum selesai).' },
+                { code: '404', desc: 'job_id tidak ditemukan atau file hasil hilang.' },
+                { code: '500', desc: 'Job gagal diproses (lihat detail error).' },
+              ],
+            },
+            {
+              id: 'health',
+              method: 'GET',
+              path: '/health',
+              summary: 'Healthcheck server (tanpa auth, untuk Docker/Coolify).',
+              status: '200 OK',
+              request: `// No auth & no body required`,
+              response: `{\n  "status": "ok"\n}`,
+              errors: [
+                { code: '503', desc: 'Server belum siap / sedang restart.' },
+              ],
+            },
+          ];
         },
         copyText(txt) {
           navigator.clipboard.writeText(txt);
