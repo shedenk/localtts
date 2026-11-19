@@ -115,7 +115,7 @@ Untuk langsung menginstal OmniVoice & Qwen3-TTS saat build Docker, set `INSTALL_
 
 #### **Coolify**
 1. Pilih **New Resource → Public/Private Repository** → masukkan URL repo GitHub ini.
-2. Pilih **Build Pack: Docker Compose** (akan otomatis membaca [docker-compose.yml](docker-compose.yml)).
+2. Pilih **Build Pack: Docker Compose**, lalu isi **Docker Compose Location** dengan `docker-compose.coolify.yaml` (file khusus Coolify dengan `expose`, `healthcheck`, dan `SERVICE_FQDN_LOCALTTS`).
 3. Di menu **Environment Variables**, atur:
    - `AUTH_USERNAME=admin`
    - `AUTH_PASSWORD=password_kuat_anda`

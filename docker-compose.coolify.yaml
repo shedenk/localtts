@@ -1,0 +1,43 @@
+services:
+  localtts:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        # Default false (standar ringan: Kokoro, Edge-TTS, Faster-Whisper).
+        # Ubah ke true jika VPS punya RAM >= 8 GB / GPU dan ingin OmniVoice + Qwen3-TTS langsung terpasang.
+        INSTALL_ALL_ENGINES: "${INSTALL_ALL_ENGINES:-false}"
+    restart: unless-stopped
+    # Coolify menggunakan Traefik/Caddy untuk routing domain ke port container.
+    # Gunakan expose agar tidak bentrok dengan port host jika ada service lain di VPS.
+    expose:
+      - "${PORT:-8000}"
+    environment:
+      - SERVICE_FQDN_LOCALTTS
+      - PORT=${PORT:-8000}
+      - APP_NAME=${APP_NAME:-LocalTTS}
+      - AUTH_USERNAME=${AUTH_USERNAME:-admin}
+      - AUTH_PASSWORD=${AUTH_PASSWORD:-changeme123}
+      - SESSION_SECRET=${SESSION_SECRET:-change-this-secret-in-coolify}
+      - API_KEY=${API_KEY:-}
+      - API_KEY_HEADER=${API_KEY_HEADER:-X-API-Key}
+      - DEVICE=${DEVICE:-auto}
+      - ENABLED_ENGINES=${ENABLED_ENGINES:-kokoro,edge,whisper,omnivoice,qwen3}
+      - IDLE_UNLOAD_SECONDS=${IDLE_UNLOAD_SECONDS:-300}
+      - TTS_MAX_CHARS=${TTS_MAX_CHARS:-5000}
+      - STT_MAX_FILE_MB=${STT_MAX_FILE_MB:-50}
+      - DATA_DIR=/app/data
+      - MODELS_DIR=/app/models
+    volumes:
+      - localtts_data:/app/data
+      - localtts_models:/app/models
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:${PORT:-8000}/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+volumes:
+  localtts_data:
+  localtts_models:
