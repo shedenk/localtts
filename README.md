@@ -230,12 +230,14 @@ curl -X POST http://localhost:8000/v1/jobs/speech \
 ```
 Cek progress via `GET /v1/jobs/job_133614501c17`, dan ambil hasil akhir via `GET /v1/jobs/job_133614501c17/result`. Jika `webhook_url` / `WEBHOOK_URL` diisi, server otomatis mengirim `POST` JSON berisi `job_id`, `status`, `progress`, `result`, dan `error` saat selesai.
 
-### Kode Error Umum
-- `400 Bad Request`: Parameter tidak valid / model tidak dikenal / URL bukan `http`/`https`.
+### Kode Error Umum & Keamanan URL
+- `400 Bad Request`: Parameter tidak valid / model tidak dikenal / URL bukan `http`/`https` / URL diblokir (alamat metadata `169.254.169.254` selalu diblokir; `127.0.0.1` diblokir jika `ALLOW_LOCAL_URLS=false`).
 - `401 Unauthorized`: `API_KEY` aktif di `.env` namun header `Authorization` / `X-API-Key` tidak valid atau kosong.
 - `404 Not Found`: `job_id` atau resource tidak ditemukan.
 - `413 Payload Too Large`: Teks melebihi `TTS_MAX_CHARS` atau file melebihi `STT_MAX_FILE_MB`.
 - `503 Service Unavailable`: Engine belum terinstall di server.
+
+> **Tips Docker Lokal:** Jika menjalankan LocalTTS di Docker dan ingin memanggil webhook yang berjalan di mesin host, gunakan `http://host.docker.internal:PORT/hook` (dengan `ALLOW_LOCAL_URLS=true`). Untuk VPS publik ketat, set `ALLOW_LOCAL_URLS=false` di `.env` / Coolify.
 
 Contoh lengkap untuk **Python, JavaScript/Node.js, PHP, dan Go** tersedia di **[docs/API.md](docs/API.md)** serta langsung di tab **⚡ API Docs** pada UI (bisa export ke `.md`, `.txt`, dan `.csv`).
 
