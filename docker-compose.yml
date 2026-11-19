@@ -1,0 +1,32 @@
+services:
+  tts-local:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        # Default false: install standar ringan (Kokoro, Edge-TTS, Whisper).
+        # OmniVoice & Qwen3-TTS bisa diinstall langsung dari UI sesuai spek RAM/GPU.
+        INSTALL_ALL_ENGINES: "${INSTALL_ALL_ENGINES:-false}"
+    container_name: localtts
+    restart: unless-stopped
+    ports:
+      - "${PORT:-8000}:8000"
+    environment:
+      - APP_NAME=${APP_NAME:-LocalTTS}
+      - AUTH_USERNAME=${AUTH_USERNAME:-admin}
+      - AUTH_PASSWORD=${AUTH_PASSWORD:-changeme123}
+      - SESSION_SECRET=${SESSION_SECRET:-change-this-secret-in-coolify}
+      - API_KEY=${API_KEY:-}
+      - API_KEY_HEADER=${API_KEY_HEADER:-X-API-Key}
+      - DEVICE=${DEVICE:-auto}
+      - ENABLED_ENGINES=${ENABLED_ENGINES:-kokoro,edge,whisper,omnivoice,qwen3}
+      - IDLE_UNLOAD_SECONDS=${IDLE_UNLOAD_SECONDS:-300}
+      - DATA_DIR=/app/data
+      - MODELS_DIR=/app/models
+    volumes:
+      - tts_data:/app/data
+      - tts_models:/app/models
+
+volumes:
+  tts_data:
+  tts_models:

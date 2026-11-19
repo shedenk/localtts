@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LocalTTS</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen" x-data="app()" x-init="init()">
+  <!-- Top Bar -->
+  <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-20">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center text-lg">🎙️</div>
+        <div>
+          <h1 class="font-semibold text-base leading-tight" x-text="sys.app_name || 'LocalTTS'"></h1>
+          <div class="flex flex-wrap items-center gap-2 text-xs text-slate-400 mt-0.5">
+            <span class="px-1.5 py-0.5 rounded bg-slate-800 text-indigo-300 font-mono"
+              x-text="(sys.hardware?.device || 'cpu').toUpperCase() + (sys.hardware?.gpu_name ? ' · ' + sys.hardware.gpu_name : '')"></span>
+            <span x-show="sys.hardware" x-text="`RAM: ${sys.hardware?.ram_used_gb}/${sys.hardware?.ram_total_gb} GB (${sys.hardware?.ram_percent}%)`"></span>
+            <span class="px-1.5 py-0.5 rounded"
+              :class="sys.api_auth_enabled ? 'bg-emerald-950 text-emerald-300 border border-emerald-800/60' : 'bg-amber-950 text-amber-300 border border-amber-800/60'"
+              x-text="sys.api_auth_enabled ? 'API: Protected' : 'API: Open'"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <template x-for="eng in (sys.engines || []).filter(e => e.loaded)" :key="eng.name">
+          <button @click="unloadEngine(eng.name)" title="Click to unload from RAM"
+            class="text-xs px-2.5 py-1 rounded-full bg-emerald-950/70 border border-emerald-700/60 text-emerald-300 hover:bg-rose-950 hover:border-rose-700 hover:text-rose-300 transition">
+            ● <span x-text="eng.name"></span> (Unload)
+          </button>
+        </template>
+        <button x-show="sys.ui_auth_enabled" @click="logout()"
+          class="text-xs px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 transition">
+          Logout
+        </button>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="max-w-6xl mx-auto px-4 flex gap-1 overflow-x-auto">
+      <button @click="tab='tts'" :class="tab==='tts' ? 'border-indigo-500 text-white' : 'border-transparent text-slate-400 hover:text-slate-200'"
+        class="px-4 py-2.5 text-sm font-medium border-b-2 transition whitespace-nowrap">🔊 TTS Studio</button>
+      <button @click="tab='stt'" :class="tab==='stt' ? 'border-indigo-500 text-white' : 'border-transparent text-slate-400 hover:text-slate-200'"
+        class="px-4 py-2.5 text-sm font-medium border-b-2 transition whitespace-nowrap">📝 Whisper STT</button>
+      <button @click="tab='history'; loadHistory(); loadClones()" :class="tab==='history' ? 'border-indigo-500 text-white' : 'border-transparent text-slate-400 hover:text-slate-200'"
+        class="px-4 py-2.5 text-sm font-medium border-b-2 transition whitespace-nowrap">🗂️ History & Clones</button>
+      <button @click="tab='api'; loadSystem()" :class="tab==='api' ? 'border-indigo-500 text-white' : 'border-transparent text-slate-400 hover:text-slate-200'"
+        class="px-4 py-2.5 text-sm font-medium border-b-2 transition whitespace-nowrap">⚡ API & System</button>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-4 py-6">
+    <!-- Toast -->
+    <div x-show="toast.msg" x-transition
+      class="mb-4 px-4 py-2.5 rounded-xl text-sm border flex items-center justify-between"
+      :class="toast.type==='error' ? 'bg-rose-950/60 border-rose-800 text-rose-200' : 'bg-emerald-950/60 border-emerald-800 text-emerald-200'">
+      <span x-text="toast.msg"></span>
+      <button @click="toast.msg=''" class="text-xs opacity-70 hover:opacity-100">✕</button>
+    </div>
+
+    <!-- TAB 1: TTS STUDIO -->
+    <section x-show="tab==='tts'" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div class="lg:col-span-2 space-y-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-medium text-slate-400 mb-1">TTS Engine</label>
+              <select x-model="tts.engine" @change="onEngineChange()"
+                class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500">
+                <template x-for="eng in ttsEngines()" :key="eng.name">
+                  <option :value="eng.name" x-text="eng.display_name + (eng.available ? '' : ' (Not Installed)')"></option>
+                </template>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-400 mb-1">Language (EN / ID)</label>
+              <select x-model="tts.language"
+                class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500">
+                <option value="en-us">English (US/UK)</option>
+                <option value="id">Indonesia (id) — Edge / OmniVoice</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Voice Picker with Gender & Clickable Sample Preview -->
+          <div>
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+              <label class="text-xs font-medium text-slate-400">Select Voice & Preview Sample</label>
+              <div class="flex gap-1 text-xs">
+                <button type="button" @click="tts.genderFilter='all'"
+                  :class="tts.genderFilter==='all' ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-300'"
+                  class="px-2.5 py-1 rounded-md transition">All</button>
+                <button type="button" @click="tts.genderFilter='female'"
+                  :class="tts.genderFilter==='female' ? 'bg-pink-600 text-white' : 'bg-slate-800 text-slate-300'"
+                  class="px-2.5 py-1 rounded-md transition">♀ Female</button>
+                <button type="button" @click="tts.genderFilter='male'"
+                  :class="tts.genderFilter==='male' ? 'bg-sky-600 text-white' : 'bg-slate-800 text-slate-300'"
+                  class="px-2.5 py-1 rounded-md transition">♂ Male</button>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-56 overflow-y-auto pr-1">
+              <template x-for="v in filteredVoices()" :key="v.id">
+                <div @click="tts.voice = v.id; tts.clone_id = ''"
+                  class="flex items-center justify-between gap-2 p-2.5 rounded-xl border cursor-pointer transition"
+                  :class="tts.voice === v.id && !tts.clone_id ? 'bg-indigo-950/60 border-indigo-500' : 'bg-slate-950 border-slate-800 hover:border-slate-700'">
+                  <div class="min-w-0">
+                    <div class="text-xs font-medium text-slate-100 truncate" x-text="v.name"></div>
+                    <div class="flex items-center gap-1.5 mt-1">
+                      <span class="text-[10px] px-1.5 py-0.5 rounded font-medium"
+                        :class="v.gender==='female' ? 'bg-pink-950 text-pink-300' : 'bg-sky-950 text-sky-300'"
+                        x-text="v.gender==='female' ? '♀ Female' : '♂ Male'"></span>
+                      <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 uppercase"
+                        x-text="v.language"></span>
+                    </div>
+                  </div>
+                  <button type="button" @click.stop="playSample(v)"
+                    :disabled="sampleLoading === v.id"
+                    class="shrink-0 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-indigo-600 text-slate-200 transition disabled:opacity-50">
+                    <span x-show="sampleLoading === v.id">⏳</span>
+                    <span x-show="sampleLoading !== v.id && samplePlaying === v.id">⏹ Stop</span>
+                    <span x-show="sampleLoading !== v.id && samplePlaying !== v.id">▶ Sample</span>
+                  </button>
+                </div>
+              </template>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-medium text-slate-400 mb-1">Format</label>
+              <select x-model="tts.response_format"
+                class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500">
+                <option value="mp3">MP3</option>
+                <option value="wav">WAV</option>
+                <option value="opus">Opus (OGG)</option>
+                <option value="flac">FLAC</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-400 mb-1">Speed: <span x-text="tts.speed + 'x'"></span></label>
+              <input x-model="tts.speed" type="range" min="0.5" max="2.0" step="0.05"
+                class="w-full accent-indigo-500 mt-2" />
+            </div>
+          </div>
+
+          <!-- Voice Design / Cloning (OmniVoice / Qwen3) -->
+          <div x-show="currentEngine()?.supports_cloning || currentEngine()?.supports_voice_design"
+            class="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800 space-y-3">
+            <div class="text-xs font-medium text-indigo-300">Voice Cloning & Design (OmniVoice / Qwen3)</div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs text-slate-400 mb-1">Saved Voice Clone (Optional)</label>
+                <select x-model="tts.clone_id"
+                  class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs">
+                  <option value="">-- None (Use Preset / Upload) --</option>
+                  <template x-for="c in clones" :key="c.id">
+                    <option :value="c.id" x-text="`${c.name} (${c.engine})`"></option>
+                  </template>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs text-slate-400 mb-1">Or Upload Reference Audio (3-10s)</label>
+                <input type="file" accept="audio/*" @change="tts.ref_file = $event.target.files[0]"
+                  class="w-full text-xs text-slate-400 file:mr-2 file:py-1 file:px-2.5 file:rounded-md file:border-0 file:bg-slate-800 file:text-slate-200" />
+              </div>
+            </div>
+            <div>
+              <label class="block text-xs text-slate-400 mb-1">Voice Design / Style Instruction (Optional)</label>
+              <input x-model="tts.instruct" type="text" placeholder="e.g. warm female voice, calm, clear narration"
+                class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-indigo-500" />
+            </div>
+          </div>
+
+          <div>
+            <div class="flex justify-between text-xs text-slate-400 mb-1">
+              <span>Input Text</span>
+              <span x-text="tts.text.length + ' chars'"></span>
+            </div>
+            <textarea x-model="tts.text" rows="5"
+              class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm focus:outline-none focus:border-indigo-500"
+              placeholder="Type or paste text to synthesize..."></textarea>
+          </div>
+
+          <div class="flex items-center justify-between gap-3">
+            <p class="text-xs text-slate-400" x-text="currentEngine()?.description"></p>
+            <button @click="generateTTS()" :disabled="tts.loading || !tts.text.trim()"
+              class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-sm font-medium transition whitespace-nowrap">
+              <span x-show="!tts.loading">Generate Speech</span>
+              <span x-show="tts.loading">Generating...</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Output Card -->
+      <div class="space-y-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+          <h2 class="text-sm font-semibold">Output Audio</h2>
+          <template x-if="tts.result">
+            <div class="space-y-3">
+              <audio controls autoplay :src="tts.result.audio_url" class="w-full"></audio>
+              <div class="grid grid-cols-3 gap-2 text-center text-xs bg-slate-950 border border-slate-800 rounded-xl p-2.5">
+                <div>
+                  <div class="text-slate-400">Duration</div>
+                  <div class="font-mono font-medium" x-text="tts.result.duration_sec + 's'"></div>
+                </div>
+                <div>
+                  <div class="text-slate-400">Process</div>
+                  <div class="font-mono font-medium" x-text="tts.result.process_sec + 's'"></div>
+                </div>
+                <div>
+                  <div class="text-slate-400">RTF</div>
+                  <div class="font-mono font-medium text-emerald-400" x-text="tts.result.rtf + 'x'"></div>
+                </div>
+              </div>
+              <a :href="tts.result.audio_url" download
+                class="block text-center w-full py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-medium transition">
+                ⬇ Download Audio
+              </a>
+            </div>
+          </template>
+          <template x-if="!tts.result">
+            <div class="text-xs text-slate-500 py-10 text-center border border-dashed border-slate-800 rounded-xl">
+              Generated audio & metrics will appear here.
+            </div>
+          </template>
+        </div>
+
+        <div x-show="currentEngine() && !currentEngine().available"
+          class="bg-amber-950/40 border border-amber-800/60 rounded-2xl p-4 text-xs text-amber-200 space-y-2.5">
+          <div class="flex items-center justify-between gap-2">
+            <span class="font-semibold">Engine Not Installed</span>
+            <span class="px-2 py-0.5 rounded bg-slate-950 text-amber-300"
+              x-text="`Min RAM: ${currentEngine()?.min_ram_gb || 1} GB (You: ${sys.hardware?.ram_total_gb || '?'} GB)`"></span>
+          </div>
+          <p class="text-amber-200/80">Install engine ini langsung dari UI sesuai spesifikasi perangkat Anda:</p>
+          <button type="button" @click="installEngine(currentEngine())"
+            :disabled="installState.status === 'installing'"
+            class="w-full py-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-medium transition disabled:opacity-50">
+            <span x-show="installState.status !== 'installing'">⬇ Install <span x-text="currentEngine()?.display_name"></span></span>
+            <span x-show="installState.status === 'installing'" x-text="installState.message || 'Installing...'"></span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: WHISPER STT -->
+    <section x-show="tab==='stt'" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+        <h2 class="text-sm font-semibold">Whisper Speech-to-Text</h2>
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Model Size</label>
+          <select x-model="stt.model_size"
+            class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm">
+            <option value="tiny">tiny (fastest)</option>
+            <option value="base">base (balanced)</option>
+            <option value="small">small</option>
+            <option value="medium">medium</option>
+            <option value="large-v3-turbo">large-v3-turbo (best)</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Language</label>
+          <select x-model="stt.language"
+            class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm">
+            <option value="auto">Auto Detect</option>
+            <option value="id">Indonesia (id)</option>
+            <option value="en">English (en)</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Audio / Video File</label>
+          <input type="file" accept="audio/*,video/*" @change="stt.file = $event.target.files[0]"
+            class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-slate-800 file:text-slate-200" />
+        </div>
+        <button @click="transcribeSTT()" :disabled="stt.loading || !stt.file"
+          class="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-sm font-medium transition">
+          <span x-show="!stt.loading">Transcribe Audio</span>
+          <span x-show="stt.loading">Transcribing...</span>
+        </button>
+      </div>
+
+      <div class="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+        <div class="flex items-center justify-between">
+          <h2 class="text-sm font-semibold">Transcript Result</h2>
+          <button x-show="stt.result" @click="copyText(stt.result.text)"
+            class="text-xs px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700">Copy Text</button>
+        </div>
+        <template x-if="stt.result">
+          <div class="space-y-4">
+            <div class="flex flex-wrap gap-3 text-xs text-slate-400">
+              <span>Detected: <strong class="text-slate-200" x-text="stt.result.language"></strong></span>
+              <span>Duration: <strong class="text-slate-200" x-text="stt.result.duration_sec + 's'"></strong></span>
+              <span>Process: <strong class="text-emerald-400" x-text="stt.result.process_sec + 's'"></strong></span>
+            </div>
+            <textarea readonly rows="6" :value="stt.result.text"
+              class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm"></textarea>
+            <div class="max-h-56 overflow-y-auto space-y-1.5 text-xs">
+              <template x-for="seg in stt.result.segments" :key="seg.id">
+                <div class="flex gap-3 bg-slate-950/70 px-3 py-1.5 rounded-lg">
+                  <span class="font-mono text-indigo-400 shrink-0" x-text="`${seg.start}s - ${seg.end}s`"></span>
+                  <span class="text-slate-300" x-text="seg.text"></span>
+                </div>
+              </template>
+            </div>
+          </div>
+        </template>
+        <template x-if="!stt.result">
+          <div class="text-xs text-slate-500 py-14 text-center border border-dashed border-slate-800 rounded-xl">
+            Upload an audio file to transcribe with Faster-Whisper.
+          </div>
+        </template>
+      </div>
+    </section>
+
+    <!-- TAB 3: HISTORY & CLONES -->
+    <section x-show="tab==='history'" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div class="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+        <div class="flex items-center justify-between">
+          <h2 class="text-sm font-semibold">Recent History (SQLite)</h2>
+          <button @click="loadHistory()" class="text-xs px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700">Refresh</button>
+        </div>
+        <div class="space-y-2.5 max-h-[520px] overflow-y-auto">
+          <template x-for="item in history" :key="item.id">
+            <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs space-y-2">
+              <div class="flex items-center justify-between gap-2">
+                <div class="flex items-center gap-2">
+                  <span class="px-1.5 py-0.5 rounded font-mono uppercase"
+                    :class="item.kind==='tts' ? 'bg-indigo-950 text-indigo-300' : 'bg-teal-950 text-teal-300'"
+                    x-text="item.kind"></span>
+                  <span class="font-medium text-slate-200" x-text="item.engine"></span>
+                  <span class="text-slate-500" x-text="item.created_at"></span>
+                </div>
+                <button @click="deleteHistory(item.id)" class="text-rose-400 hover:text-rose-300">Delete</button>
+              </div>
+              <p class="text-slate-300 line-clamp-2" x-text="item.kind==='tts' ? item.input_text : item.output_text"></p>
+              <template x-if="item.kind==='tts' && item.audio_filename">
+                <audio controls :src="`/api/history/${item.id}/audio`" class="w-full h-8"></audio>
+              </template>
+            </div>
+          </template>
+          <div x-show="history.length===0" class="text-xs text-slate-500 text-center py-8">No history yet.</div>
+        </div>
+      </div>
+
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+        <h2 class="text-sm font-semibold">Saved Voice Clones</h2>
+        <form @submit.prevent="createClone()" class="space-y-2.5 pb-4 border-b border-slate-800">
+          <input x-model="newClone.name" type="text" required placeholder="Clone name (e.g. MyVoice)"
+            class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs" />
+          <input x-model="newClone.ref_text" type="text" placeholder="Reference transcript (optional)"
+            class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs" />
+          <input type="file" accept="audio/*" required @change="newClone.file = $event.target.files[0]"
+            class="w-full text-xs text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-slate-800 file:text-slate-200" />
+          <button type="submit" class="w-full py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs font-medium">
+            Save Voice Sample
+          </button>
+        </form>
+        <div class="space-y-2">
+          <template x-for="c in clones" :key="c.id">
+            <div class="flex items-center justify-between bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs">
+              <div>
+                <div class="font-medium text-slate-200" x-text="c.name"></div>
+                <div class="text-slate-500" x-text="c.created_at"></div>
+              </div>
+              <button @click="deleteClone(c.id)" class="text-rose-400 hover:text-rose-300">✕</button>
+            </div>
+          </template>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: API & SYSTEM -->
+    <section x-show="tab==='api'" class="space-y-6">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <template x-for="eng in (sys.engines || [])" :key="eng.name">
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-2.5">
+            <div class="flex items-center justify-between">
+              <span class="font-semibold text-sm" x-text="eng.display_name"></span>
+              <span class="text-[11px] px-2 py-0.5 rounded-full"
+                :class="eng.loaded ? 'bg-emerald-950 text-emerald-300' : (eng.available ? 'bg-slate-800 text-slate-300' : 'bg-amber-950 text-amber-300')"
+                x-text="eng.loaded ? 'Loaded' : (eng.available ? 'Ready' : 'Missing')"></span>
+            </div>
+            <p class="text-xs text-slate-400" x-text="eng.description"></p>
+            <div class="flex items-center justify-between text-[11px] text-slate-500">
+              <span x-text="`Min RAM: ${eng.min_ram_gb} GB` + ((sys.hardware?.ram_total_gb || 0) >= eng.min_ram_gb ? ' · ✓ Compatible' : ' · ⚠ Low RAM')"></span>
+              <a x-show="eng.source_url" :href="eng.source_url" target="_blank" rel="noopener noreferrer"
+                class="text-indigo-400 hover:text-indigo-300 underline">Source ↗</a>
+            </div>
+            <div class="flex gap-2 pt-1" x-show="eng.available">
+              <button x-show="!eng.loaded" @click="loadEngine(eng.name)"
+                class="text-xs px-3 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500">Load</button>
+              <button x-show="eng.loaded" @click="unloadEngine(eng.name)"
+                class="text-xs px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700">Unload</button>
+            </div>
+            <div class="pt-1" x-show="!eng.available">
+              <button @click="installEngine(eng)" :disabled="installState.status === 'installing'"
+                class="text-xs px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-medium disabled:opacity-50">
+                <span x-show="!(installState.status === 'installing' && installState.engine === eng.name)">⬇ Install from UI</span>
+                <span x-show="installState.status === 'installing' && installState.engine === eng.name">⏳ Installing...</span>
+              </button>
+            </div>
+          </div>
+        </template>
+      </div>
+
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+        <h2 class="text-sm font-semibold">OpenAI-Compatible API Snippets</h2>
+        <p class="text-xs text-slate-400">
+          Auth Status:
+          <strong class="text-slate-200" x-text="sys.api_auth_enabled ? `Protected (send Authorization: Bearer <API_KEY> or ${sys.api_key_header}: <API_KEY>)` : 'Open (API_KEY in .env is empty)'"></strong>
+        </p>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 text-xs">
+          <div>
+            <div class="text-slate-400 mb-1">TTS — POST /v1/audio/speech</div>
+            <pre class="bg-slate-950 border border-slate-800 rounded-xl p-3 overflow-x-auto text-indigo-300"
+              x-text="`curl -X POST ${location.origin}/v1/audio/speech \\\n  -H 'Content-Type: application/json'${sys.api_auth_enabled ? ` \\\n  -H 'Authorization: Bearer YOUR_API_KEY'` : ''} \\\n  -d '{\"model\":\"kokoro\",\"input\":\"Hello from local TTS!\",\"voice\":\"af_heart\",\"response_format\":\"mp3\"}' \\\n  --output speech.mp3`"></pre>
+          </div>
+          <div>
+            <div class="text-slate-400 mb-1">Whisper STT — POST /v1/audio/transcriptions</div>
+            <pre class="bg-slate-950 border border-slate-800 rounded-xl p-3 overflow-x-auto text-teal-300"
+              x-text="`curl -X POST ${location.origin}/v1/audio/transcriptions \\\n${sys.api_auth_enabled ? `  -H 'Authorization: Bearer YOUR_API_KEY' \\\n` : ''}  -F file=@audio.mp3 \\\n  -F model=base`"></pre>
+          </div>
+        </div>
+      </div>
+      <!-- Credits & Open-Source Sources -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+        <div>
+          <h2 class="text-sm font-semibold">Credits & Open-Source Sources</h2>
+          <p class="text-xs text-slate-400 mt-0.5">LocalTTS dibangun di atas proyek open-source berikut:</p>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
+          <template x-for="eng in (sys.engines || [])" :key="'cred-' + eng.name">
+            <a :href="eng.source_url" target="_blank" rel="noopener noreferrer"
+              class="block bg-slate-950 border border-slate-800 hover:border-indigo-500/60 rounded-xl p-3 space-y-1 transition">
+              <div class="flex items-center justify-between gap-2">
+                <span class="font-medium text-slate-200" x-text="eng.display_name"></span>
+                <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300" x-text="eng.license_name"></span>
+              </div>
+              <div class="text-[11px] text-indigo-400 truncate" x-text="eng.source_url"></div>
+            </a>
+          </template>
+          <a href="https://github.com/hexgrad/kokoro" target="_blank" rel="noopener noreferrer"
+            class="block bg-slate-950 border border-slate-800 hover:border-indigo-500/60 rounded-xl p-3 space-y-1 transition">
+            <div class="flex items-center justify-between gap-2">
+              <span class="font-medium text-slate-200">Kokoro-82M (Model Weights)</span>
+              <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300">Apache-2.0</span>
+            </div>
+            <div class="text-[11px] text-indigo-400 truncate">https://github.com/hexgrad/kokoro</div>
+          </a>
+        </div>
+        <div class="text-[11px] text-slate-500 pt-2 border-t border-slate-800/80 flex flex-wrap gap-x-4 gap-y-1">
+          <span>Stack:</span>
+          <a href="https://fastapi.tiangolo.com" target="_blank" rel="noopener noreferrer" class="hover:text-slate-300 underline">FastAPI</a>
+          <a href="https://alpinejs.dev" target="_blank" rel="noopener noreferrer" class="hover:text-slate-300 underline">Alpine.js</a>
+          <a href="https://tailwindcss.com" target="_blank" rel="noopener noreferrer" class="hover:text-slate-300 underline">Tailwind CSS</a>
+          <a href="https://github.com/astral-sh/uv" target="_blank" rel="noopener noreferrer" class="hover:text-slate-300 underline">uv</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="max-w-6xl mx-auto px-4 pb-6 pt-2 text-[11px] text-slate-500 flex flex-wrap items-center justify-between gap-2">
+    <span>LocalTTS — Self-hosted TTS & STT Hub (MIT License)</span>
+    <button @click="tab='api'; window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })"
+      class="text-indigo-400 hover:text-indigo-300 underline">
+      Credits & Open-Source Sources
+    </button>
+  </footer>
+
+  <script>
+    function app() {
+      return {
+        tab: 'tts',
+        sys: {},
+        clones: [],
+        history: [],
+        toast: { msg: '', type: 'ok' },
+        tts: {
+          engine: 'kokoro',
+          voice: 'af_heart',
+          genderFilter: 'all',
+          language: 'en-us',
+          speed: 1.0,
+          response_format: 'mp3',
+          instruct: '',
+          clone_id: '',
+          ref_file: null,
+          text: 'Hello! This is a test of the local Text-to-Speech system.',
+          loading: false,
+          result: null,
+        },
+        sampleAudio: null,
+        samplePlaying: '',
+        sampleLoading: '',
+        installState: { status: 'idle', engine: '', message: '' },
+        stt: {
+          model_size: 'base',
+          language: 'auto',
+          file: null,
+          loading: false,
+          result: null,
+        },
+        newClone: { name: '', ref_text: '', file: null },
+
+        async init() {
+          await this.loadSystem();
+          await this.loadClones();
+          this.onEngineChange();
+        },
+        notify(msg, type = 'ok') {
+          this.toast = { msg, type };
+          setTimeout(() => { if (this.toast.msg === msg) this.toast.msg = ''; }, 5000);
+        },
+        async loadSystem() {
+          const res = await fetch('/api/system');
+          if (res.status === 401) { window.location.href = '/login'; return; }
+          this.sys = await res.json();
+        },
+        ttsEngines() {
+          return (this.sys.engines || []).filter(e => e.kind === 'tts');
+        },
+        currentEngine() {
+          return (this.sys.engines || []).find(e => e.name === this.tts.engine);
+        },
+        currentVoices() {
+          return this.currentEngine()?.voices || [];
+        },
+        filteredVoices() {
+          const all = this.currentVoices();
+          if (this.tts.genderFilter === 'all') return all;
+          return all.filter(v => v.gender === this.tts.genderFilter);
+        },
+        async playSample(v) {
+          if (this.samplePlaying === v.id && this.sampleAudio) {
+            this.sampleAudio.pause();
+            this.samplePlaying = '';
+            return;
+          }
+          if (this.sampleAudio) {
+            this.sampleAudio.pause();
+            this.samplePlaying = '';
+          }
+          this.sampleLoading = v.id;
+          try {
+            const url = `/api/voices/sample?engine=${encodeURIComponent(this.tts.engine)}&voice=${encodeURIComponent(v.id)}&language=${encodeURIComponent(v.language)}`;
+            const res = await fetch(url);
+            if (!res.ok) {
+              const err = await res.json().catch(() => ({}));
+              throw new Error(err.detail || 'Failed to load sample');
+            }
+            const blob = await res.blob();
+            const objUrl = URL.createObjectURL(blob);
+            this.sampleAudio = new Audio(objUrl);
+            this.sampleAudio.onended = () => { this.samplePlaying = ''; };
+            this.samplePlaying = v.id;
+            await this.sampleAudio.play();
+          } catch (e) {
+            this.notify(e.message, 'error');
+          } finally {
+            this.sampleLoading = '';
+          }
+        },
+        onEngineChange() {
+          const voices = this.currentVoices();
+          if (voices.length > 0 && !voices.some(v => v.id === this.tts.voice)) {
+            this.tts.voice = voices[0].id;
+          }
+          if (this.tts.engine === 'omnivoice' || this.tts.engine === 'edge') {
+            this.tts.language = this.tts.voice.startsWith('id') ? 'id' : 'en-us';
+          } else if (this.tts.engine === 'kokoro') {
+            this.tts.language = 'en-us';
+          }
+        },
+        async generateTTS() {
+          this.tts.loading = true;
+          try {
+            const fd = new FormData();
+            fd.append('engine', this.tts.engine);
+            fd.append('text', this.tts.text);
+            fd.append('voice', this.tts.voice);
+            fd.append('language', this.tts.language);
+            fd.append('speed', this.tts.speed);
+            fd.append('response_format', this.tts.response_format);
+            fd.append('instruct', this.tts.instruct);
+            if (this.tts.clone_id) fd.append('clone_id', this.tts.clone_id);
+            if (this.tts.ref_file) fd.append('ref_audio', this.tts.ref_file);
+
+            const res = await fetch('/api/tts/generate', { method: 'POST', body: fd });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.detail || 'TTS failed');
+            this.tts.result = data;
+            await this.loadSystem();
+          } catch (e) {
+            this.notify(e.message, 'error');
+          } finally {
+            this.tts.loading = false;
+          }
+        },
+        async transcribeSTT() {
+          this.stt.loading = true;
+          try {
+            const fd = new FormData();
+            fd.append('file', this.stt.file);
+            fd.append('model_size', this.stt.model_size);
+            fd.append('language', this.stt.language);
+
+            const res = await fetch('/api/stt/transcribe', { method: 'POST', body: fd });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.detail || 'STT failed');
+            this.stt.result = data;
+            await this.loadSystem();
+          } catch (e) {
+            this.notify(e.message, 'error');
+          } finally {
+            this.stt.loading = false;
+          }
+        },
+        async loadHistory() {
+          const res = await fetch('/api/history');
+          if (res.ok) this.history = (await res.json()).items;
+        },
+        async deleteHistory(id) {
+          await fetch(`/api/history/${id}`, { method: 'DELETE' });
+          await this.loadHistory();
+        },
+        async loadClones() {
+          const res = await fetch('/api/clones');
+          if (res.ok) this.clones = (await res.json()).items;
+        },
+        async createClone() {
+          const fd = new FormData();
+          fd.append('name', this.newClone.name);
+          fd.append('ref_text', this.newClone.ref_text);
+          fd.append('file', this.newClone.file);
+          const res = await fetch('/api/clones', { method: 'POST', body: fd });
+          const data = await res.json();
+          if (!res.ok) { this.notify(data.detail || 'Failed', 'error'); return; }
+          this.newClone = { name: '', ref_text: '', file: null };
+          await this.loadClones();
+          this.notify('Voice clone sample saved!');
+        },
+        async deleteClone(id) {
+          await fetch(`/api/clones/${id}`, { method: 'DELETE' });
+          await this.loadClones();
+        },
+        async loadEngine(name) {
+          this.notify(`Loading ${name}...`);
+          const res = await fetch(`/api/engines/${name}/load`, { method: 'POST' });
+          const data = await res.json();
+          if (!res.ok) this.notify(data.detail || 'Load failed', 'error');
+          else this.notify(`${name} loaded!`);
+          await this.loadSystem();
+        },
+        async unloadEngine(name) {
+          await fetch(`/api/engines/${name}/unload`, { method: 'POST' });
+          this.notify(`${name} unloaded from RAM`);
+          await this.loadSystem();
+        },
+        async installEngine(eng) {
+          const ram = this.sys.hardware?.ram_total_gb || 0;
+          let force = false;
+          if (ram > 0 && ram < eng.min_ram_gb) {
+            if (!confirm(`RAM perangkat (${ram} GB) di bawah rekomendasi (${eng.min_ram_gb} GB) untuk ${eng.display_name}. Tetap lanjutkan install?`)) {
+              return;
+            }
+            force = true;
+          }
+          const res = await fetch(`/api/engines/${eng.name}/install?force=${force}`, { method: 'POST' });
+          const data = await res.json();
+          if (!res.ok) {
+            this.notify(data.detail || 'Gagal memulai install', 'error');
+            return;
+          }
+          this.installState = { status: 'installing', engine: eng.name, message: `Installing ${eng.display_name}...` };
+          this.notify(`Installing ${eng.display_name} di background (butuh beberapa menit)...`);
+          const timer = setInterval(async () => {
+            const stRes = await fetch('/api/engines/install-status');
+            if (!stRes.ok) return;
+            const st = await stRes.json();
+            this.installState = st;
+            if (st.status === 'success') {
+              clearInterval(timer);
+              this.notify(`${eng.display_name} berhasil diinstall!`);
+              await this.loadSystem();
+            } else if (st.status === 'error') {
+              clearInterval(timer);
+              this.notify(`Install ${eng.display_name} gagal: ${st.message}`, 'error');
+            }
+          }, 3000);
+        },
+        async logout() {
+          await fetch('/api/auth/logout', { method: 'POST' });
+          window.location.href = '/login';
+        },
+        copyText(txt) {
+          navigator.clipboard.writeText(txt);
+          this.notify('Copied to clipboard!');
+        }
+      };
+    }
+  </script>
+</body>
+</html>
