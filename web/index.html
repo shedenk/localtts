@@ -546,6 +546,26 @@
                 <td class="py-2 pr-3 font-mono">/health</td>
                 <td class="py-2">Healthcheck server (tanpa auth, untuk Docker/Coolify).</td>
               </tr>
+              <tr>
+                <td class="py-2 pr-3 font-mono text-amber-400">POST</td>
+                <td class="py-2 pr-3 font-mono">/v1/jobs/speech</td>
+                <td class="py-2">Async Queue TTS (langsung return <code>job_id</code> + <code>queue_position</code>, opsional <code>webhook_url</code>).</td>
+              </tr>
+              <tr>
+                <td class="py-2 pr-3 font-mono text-amber-400">POST</td>
+                <td class="py-2 pr-3 font-mono">/v1/jobs/transcriptions</td>
+                <td class="py-2">Async Queue Whisper STT (<code>file</code> / <code>file_url</code> + opsional <code>webhook_url</code>).</td>
+              </tr>
+              <tr>
+                <td class="py-2 pr-3 font-mono text-emerald-400">GET</td>
+                <td class="py-2 pr-3 font-mono">/v1/jobs/{job_id}</td>
+                <td class="py-2">Cek progress (<code>0–100%</code>), <code>stage</code>, <code>queue_position</code>, & <code>result</code>.</td>
+              </tr>
+              <tr>
+                <td class="py-2 pr-3 font-mono text-emerald-400">GET</td>
+                <td class="py-2 pr-3 font-mono">/v1/jobs/{job_id}/result</td>
+                <td class="py-2">Ambil file audio TTS atau hasil transkrip STT setelah <code>status == "completed"</code>.</td>
+              </tr>
             </tbody>
           </table>
         </div>

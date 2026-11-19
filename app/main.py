@@ -8,11 +8,13 @@ from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
+from app.api.jobs import router as jobs_router
 from app.api.openai_compat import router as openai_router
 from app.api.studio import router as studio_router
 from app.api.ui_auth import router as auth_router
 from app.auth import is_ui_authenticated
 from app.config import get_settings
+from app.core.job_worker import job_worker_loop
 from app.core.manager import get_manager, idle_cleanup_loop
 from app.db import init_db
 
@@ -27,15 +29,18 @@ async def lifespan(app: FastAPI):
 
     stop_event = asyncio.Event()
     cleanup_task = asyncio.create_task(idle_cleanup_loop(stop_event))
+    worker_task = asyncio.create_task(job_worker_loop(stop_event))
     try:
         yield
     finally:
         stop_event.set()
         cleanup_task.cancel()
-        try:
-            await cleanup_task
-        except asyncio.CancelledError:
-            pass
+        worker_task.cancel()
+        for t in (cleanup_task, worker_task):
+            try:
+                await t
+            except asyncio.CancelledError:
+                pass
         get_manager().unload_all()
 
 
@@ -47,6 +52,7 @@ app = FastAPI(
 
 app.include_router(auth_router)
 app.include_router(openai_router)
+app.include_router(jobs_router)
 app.include_router(studio_router)
 
 if (WEB_DIR / "assets").exists():

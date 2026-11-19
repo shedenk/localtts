@@ -247,7 +247,39 @@ curl_close($ch);
 
 ---
 
-## 3. Studio, Health & Management Endpoints
+## 3. Async Job Queue, Progress & Webhook (`/v1/jobs/*`)
+
+Untuk proses berat/lama (seperti *OmniVoice*, *Qwen3-TTS*, atau file audio berdurasi panjang di *Whisper*), gunakan endpoint **Async Job Queue**:
+1. Panggil `POST /v1/jobs/speech` atau `POST /v1/jobs/transcriptions` → langsung mendapat `202 Accepted` berisi `job_id`, `queue_position`, dan `status_url`.
+2. Pantau progress (`0–100%`) & posisi antrian lewat `GET /v1/jobs/{job_id}`, atau sertakan `webhook_url` agar server otomatis mengirim `POST` JSON ke URL Anda saat selesai.
+3. Ambil hasil audio / transkrip lewat `GET /v1/jobs/{job_id}/result`.
+
+```bash
+# 1. Masukkan ke antrian (dengan webhook opsional)
+curl -X POST http://localhost:8000/v1/jobs/speech \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -d '{
+    "model": "edge",
+    "input": "Halo, ini diproses lewat antrian job!",
+    "voice": "id-ID-GadisNeural",
+    "language": "id",
+    "webhook_url": "https://webhook.site/your-id"
+  }'
+
+# 2. Cek progress & nomor antrian
+curl http://localhost:8000/v1/jobs/JOB_ID \
+  -H "Authorization: Bearer YOUR_API_KEY"
+
+# 3. Download hasil audio setelah status == "completed"
+curl http://localhost:8000/v1/jobs/JOB_ID/result \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  --output hasil.mp3
+```
+
+---
+
+## 4. Studio, Health & Management Endpoints
 
 | Method | Endpoint | Keterangan |
 | :--- | :--- | :--- |

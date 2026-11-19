@@ -68,6 +68,20 @@ def init_db() -> None:
                 process_sec REAL NOT NULL DEFAULT 0.0,
                 created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
             );
+
+            CREATE TABLE IF NOT EXISTS jobs (
+                id TEXT PRIMARY KEY,
+                kind TEXT NOT NULL,           -- 'tts' or 'stt'
+                status TEXT NOT NULL DEFAULT 'queued', -- queued | processing | completed | failed
+                progress INTEGER NOT NULL DEFAULT 0,
+                stage TEXT NOT NULL DEFAULT 'queued',
+                webhook_url TEXT NOT NULL DEFAULT '',
+                generation_id INTEGER,
+                result_json TEXT NOT NULL DEFAULT '{}',
+                error TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+                updated_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
+            );
             """
         )
 
@@ -225,3 +239,69 @@ def get_stats() -> dict[str, Any]:
             "total_clones": total_clones,
             "total_api_calls": total_api,
         }
+
+
+def create_job(job_id: str, kind: str, webhook_url: str = "") -> None:
+    with db_session() as conn:
+        conn.execute(
+            "INSERT INTO jobs (id, kind, status, progress, stage, webhook_url) VALUES (?, ?, 'queued', 0, 'queued', ?)",
+            (job_id, kind, webhook_url),
+        )
+
+
+def update_job(
+    job_id: str,
+    *,
+    status: str | None = None,
+    progress: int | None = None,
+    stage: str | None = None,
+    generation_id: int | None = None,
+    result_json: str | None = None,
+    error: str | None = None,
+) -> None:
+    fields: list[str] = ["updated_at = datetime('now', 'localtime')"]
+    vals: list[Any] = []
+    if status is not None:
+        fields.append("status = ?")
+        vals.append(status)
+    if progress is not None:
+        fields.append("progress = ?")
+        vals.append(progress)
+    if stage is not None:
+        fields.append("stage = ?")
+        vals.append(stage)
+    if generation_id is not None:
+        fields.append("generation_id = ?")
+        vals.append(generation_id)
+    if result_json is not None:
+        fields.append("result_json = ?")
+        vals.append(result_json)
+    if error is not None:
+        fields.append("error = ?")
+        vals.append(error)
+    vals.append(job_id)
+    with db_session() as conn:
+        conn.execute(f"UPDATE jobs SET {', '.join(fields)} WHERE id = ?", vals)
+
+
+def get_job(job_id: str) -> dict[str, Any] | None:
+    with db_session() as conn:
+        row = conn.execute("SELECT * FROM jobs WHERE id = ?", (job_id,)).fetchone()
+        if not row:
+            return None
+        d = dict(row)
+        if d["status"] in ("queued", "processing"):
+            pos = conn.execute(
+                "SELECT COUNT(*) FROM jobs WHERE status IN ('queued', 'processing') AND rowid <= (SELECT rowid FROM jobs WHERE id = ?)",
+                (job_id,),
+            ).fetchone()[0]
+            d["queue_position"] = int(pos)
+        else:
+            d["queue_position"] = 0
+        return d
+
+
+def list_jobs(limit: int = 30) -> list[dict[str, Any]]:
+    with db_session() as conn:
+        rows = conn.execute("SELECT * FROM jobs ORDER BY rowid DESC LIMIT ?", (limit,)).fetchall()
+        return [dict(r) for r in rows]
