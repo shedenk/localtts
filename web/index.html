@@ -65,73 +65,120 @@
     </div>
 
     <!-- TAB 1: TTS STUDIO -->
-    <section x-show="tab==='tts'" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <div class="lg:col-span-2 space-y-4">
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    <section x-show="tab==='tts'" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <!-- Left Column: Engine, Language, Voices & Cloning -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-medium text-slate-400 mb-1">TTS Engine</label>
+            <select x-model="tts.engine" @change="onEngineChange()"
+              class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500">
+              <template x-for="eng in ttsEngines()" :key="eng.name">
+                <option :value="eng.name" x-text="eng.display_name + (eng.available ? '' : ' (Not Installed)')"></option>
+              </template>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-400 mb-1">Language (EN / ID)</label>
+            <select x-model="tts.language"
+              class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500">
+              <option value="en-us">English (US/UK)</option>
+              <option value="id">Indonesia (id) — Edge / OmniVoice</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Voice Picker with Gender & Clickable Sample Preview -->
+        <div>
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+            <label class="text-xs font-medium text-slate-400">Select Voice & Preview Sample</label>
+            <div class="flex gap-1 text-xs">
+              <button type="button" @click="tts.genderFilter='all'"
+                :class="tts.genderFilter==='all' ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-300'"
+                class="px-2.5 py-1 rounded-md transition">All</button>
+              <button type="button" @click="tts.genderFilter='female'"
+                :class="tts.genderFilter==='female' ? 'bg-pink-600 text-white' : 'bg-slate-800 text-slate-300'"
+                class="px-2.5 py-1 rounded-md transition">♀ Female</button>
+              <button type="button" @click="tts.genderFilter='male'"
+                :class="tts.genderFilter==='male' ? 'bg-sky-600 text-white' : 'bg-slate-800 text-slate-300'"
+                class="px-2.5 py-1 rounded-md transition">♂ Male</button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-60 overflow-y-auto pr-1">
+            <template x-for="v in filteredVoices()" :key="v.id">
+              <div @click="tts.voice = v.id; tts.clone_id = ''"
+                class="flex items-center justify-between gap-2 p-2.5 rounded-xl border cursor-pointer transition"
+                :class="tts.voice === v.id && !tts.clone_id ? 'bg-indigo-950/60 border-indigo-500' : 'bg-slate-950 border-slate-800 hover:border-slate-700'">
+                <div class="min-w-0">
+                  <div class="text-xs font-medium text-slate-100 truncate" x-text="v.name"></div>
+                  <div class="flex items-center gap-1.5 mt-1">
+                    <span class="text-[10px] px-1.5 py-0.5 rounded font-medium"
+                      :class="v.gender==='female' ? 'bg-pink-950 text-pink-300' : 'bg-sky-950 text-sky-300'"
+                      x-text="v.gender==='female' ? '♀ Female' : '♂ Male'"></span>
+                    <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 uppercase"
+                      x-text="v.language"></span>
+                  </div>
+                </div>
+                <button type="button" @click.stop="playSample(v)"
+                  :disabled="sampleLoading === v.id"
+                  class="shrink-0 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-indigo-600 text-slate-200 transition disabled:opacity-50">
+                  <span x-show="sampleLoading === v.id">⏳</span>
+                  <span x-show="sampleLoading !== v.id && samplePlaying === v.id">⏹ Stop</span>
+                  <span x-show="sampleLoading !== v.id && samplePlaying !== v.id">▶ Sample</span>
+                </button>
+              </div>
+            </template>
+          </div>
+        </div>
+
+        <!-- Voice Design / Cloning (OmniVoice / Qwen3) -->
+        <div x-show="currentEngine()?.supports_cloning || currentEngine()?.supports_voice_design"
+          class="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800 space-y-3">
+          <div class="text-xs font-medium text-indigo-300">Voice Cloning & Design (OmniVoice / Qwen3)</div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label class="block text-xs font-medium text-slate-400 mb-1">TTS Engine</label>
-              <select x-model="tts.engine" @change="onEngineChange()"
-                class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500">
-                <template x-for="eng in ttsEngines()" :key="eng.name">
-                  <option :value="eng.name" x-text="eng.display_name + (eng.available ? '' : ' (Not Installed)')"></option>
+              <label class="block text-xs text-slate-400 mb-1">Saved Voice Clone (Optional)</label>
+              <select x-model="tts.clone_id"
+                class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs">
+                <option value="">-- None (Use Preset / Upload) --</option>
+                <template x-for="c in clones" :key="c.id">
+                  <option :value="c.id" x-text="`${c.name} (${c.engine})`"></option>
                 </template>
               </select>
             </div>
             <div>
-              <label class="block text-xs font-medium text-slate-400 mb-1">Language (EN / ID)</label>
-              <select x-model="tts.language"
-                class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500">
-                <option value="en-us">English (US/UK)</option>
-                <option value="id">Indonesia (id) — Edge / OmniVoice</option>
-              </select>
+              <label class="block text-xs text-slate-400 mb-1">Or Upload Reference Audio (3-10s)</label>
+              <input type="file" accept="audio/*" @change="tts.ref_file = $event.target.files[0]"
+                class="w-full text-xs text-slate-400 file:mr-2 file:py-1 file:px-2.5 file:rounded-md file:border-0 file:bg-slate-800 file:text-slate-200" />
             </div>
           </div>
-
-          <!-- Voice Picker with Gender & Clickable Sample Preview -->
           <div>
-            <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
-              <label class="text-xs font-medium text-slate-400">Select Voice & Preview Sample</label>
-              <div class="flex gap-1 text-xs">
-                <button type="button" @click="tts.genderFilter='all'"
-                  :class="tts.genderFilter==='all' ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-300'"
-                  class="px-2.5 py-1 rounded-md transition">All</button>
-                <button type="button" @click="tts.genderFilter='female'"
-                  :class="tts.genderFilter==='female' ? 'bg-pink-600 text-white' : 'bg-slate-800 text-slate-300'"
-                  class="px-2.5 py-1 rounded-md transition">♀ Female</button>
-                <button type="button" @click="tts.genderFilter='male'"
-                  :class="tts.genderFilter==='male' ? 'bg-sky-600 text-white' : 'bg-slate-800 text-slate-300'"
-                  class="px-2.5 py-1 rounded-md transition">♂ Male</button>
-              </div>
-            </div>
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-56 overflow-y-auto pr-1">
-              <template x-for="v in filteredVoices()" :key="v.id">
-                <div @click="tts.voice = v.id; tts.clone_id = ''"
-                  class="flex items-center justify-between gap-2 p-2.5 rounded-xl border cursor-pointer transition"
-                  :class="tts.voice === v.id && !tts.clone_id ? 'bg-indigo-950/60 border-indigo-500' : 'bg-slate-950 border-slate-800 hover:border-slate-700'">
-                  <div class="min-w-0">
-                    <div class="text-xs font-medium text-slate-100 truncate" x-text="v.name"></div>
-                    <div class="flex items-center gap-1.5 mt-1">
-                      <span class="text-[10px] px-1.5 py-0.5 rounded font-medium"
-                        :class="v.gender==='female' ? 'bg-pink-950 text-pink-300' : 'bg-sky-950 text-sky-300'"
-                        x-text="v.gender==='female' ? '♀ Female' : '♂ Male'"></span>
-                      <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 uppercase"
-                        x-text="v.language"></span>
-                    </div>
-                  </div>
-                  <button type="button" @click.stop="playSample(v)"
-                    :disabled="sampleLoading === v.id"
-                    class="shrink-0 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-indigo-600 text-slate-200 transition disabled:opacity-50">
-                    <span x-show="sampleLoading === v.id">⏳</span>
-                    <span x-show="sampleLoading !== v.id && samplePlaying === v.id">⏹ Stop</span>
-                    <span x-show="sampleLoading !== v.id && samplePlaying !== v.id">▶ Sample</span>
-                  </button>
-                </div>
-              </template>
-            </div>
+            <label class="block text-xs text-slate-400 mb-1">Voice Design / Style Instruction (Optional)</label>
+            <input x-model="tts.instruct" type="text" placeholder="e.g. female, young adult, moderate pitch (or british accent, whisper)"
+              class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-indigo-500" />
           </div>
+        </div>
 
+        <div x-show="currentEngine() && !currentEngine().available"
+          class="bg-amber-950/40 border border-amber-800/60 rounded-xl p-3.5 text-xs text-amber-200 space-y-2">
+          <div class="flex items-center justify-between gap-2">
+            <span class="font-semibold">Engine Not Installed</span>
+            <span class="px-2 py-0.5 rounded bg-slate-950 text-amber-300"
+              x-text="`Min RAM: ${currentEngine()?.min_ram_gb || 1} GB (You: ${sys.hardware?.ram_total_gb || '?'} GB)`"></span>
+          </div>
+          <button type="button" @click="installEngine(currentEngine())"
+            :disabled="installState.status === 'installing'"
+            class="w-full py-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-medium transition disabled:opacity-50">
+            <span x-show="installState.status !== 'installing'">⬇ Install <span x-text="currentEngine()?.display_name"></span></span>
+            <span x-show="installState.status === 'installing'" x-text="installState.message || 'Installing...'"></span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Right Column: Format, Speed & Input Text -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between space-y-4">
+        <div class="space-y-4 flex-1 flex flex-col">
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label class="block text-xs font-medium text-slate-400 mb-1">Format</label>
@@ -146,112 +193,33 @@
             <div>
               <label class="block text-xs font-medium text-slate-400 mb-1">Speed: <span x-text="tts.speed + 'x'"></span></label>
               <input x-model="tts.speed" type="range" min="0.5" max="2.0" step="0.05"
-                class="w-full accent-indigo-500 mt-2" />
+                class="w-full accent-indigo-500 mt-2.5" />
             </div>
           </div>
 
-          <!-- Voice Design / Cloning (OmniVoice / Qwen3) -->
-          <div x-show="currentEngine()?.supports_cloning || currentEngine()?.supports_voice_design"
-            class="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800 space-y-3">
-            <div class="text-xs font-medium text-indigo-300">Voice Cloning & Design (OmniVoice / Qwen3)</div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label class="block text-xs text-slate-400 mb-1">Saved Voice Clone (Optional)</label>
-                <select x-model="tts.clone_id"
-                  class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs">
-                  <option value="">-- None (Use Preset / Upload) --</option>
-                  <template x-for="c in clones" :key="c.id">
-                    <option :value="c.id" x-text="`${c.name} (${c.engine})`"></option>
-                  </template>
-                </select>
-              </div>
-              <div>
-                <label class="block text-xs text-slate-400 mb-1">Or Upload Reference Audio (3-10s)</label>
-                <input type="file" accept="audio/*" @change="tts.ref_file = $event.target.files[0]"
-                  class="w-full text-xs text-slate-400 file:mr-2 file:py-1 file:px-2.5 file:rounded-md file:border-0 file:bg-slate-800 file:text-slate-200" />
-              </div>
-            </div>
-            <div>
-              <label class="block text-xs text-slate-400 mb-1">Voice Design / Style Instruction (Optional)</label>
-              <input x-model="tts.instruct" type="text" placeholder="e.g. female, young adult, moderate pitch (or british accent, whisper)"
-                class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-indigo-500" />
-            </div>
-          </div>
-
-          <div>
+          <div class="flex-1 flex flex-col">
             <div class="flex justify-between text-xs text-slate-400 mb-1">
               <span>Input Text</span>
               <span x-text="tts.text.length + ' chars'"></span>
             </div>
-            <textarea x-model="tts.text" rows="5"
-              class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm focus:outline-none focus:border-indigo-500"
+            <textarea x-model="tts.text" rows="10"
+              class="w-full flex-1 bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm focus:outline-none focus:border-indigo-500"
               placeholder="Type or paste text to synthesize..."></textarea>
           </div>
-
-          <div class="flex items-center justify-between gap-3">
-            <p class="text-xs text-slate-400" x-text="currentEngine()?.description"></p>
-            <button @click="generateTTS()" :disabled="tts.loading || !tts.text.trim()"
-              class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-sm font-medium transition whitespace-nowrap">
-              <span x-show="!tts.loading">Generate Speech</span>
-              <span x-show="tts.loading">Generating...</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Output Card -->
-      <div class="space-y-4">
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
-          <h2 class="text-sm font-semibold">Output Audio</h2>
-          <template x-if="tts.result">
-            <div class="space-y-3">
-              <audio controls autoplay :src="tts.result.audio_url" class="w-full"></audio>
-              <div class="grid grid-cols-3 gap-2 text-center text-xs bg-slate-950 border border-slate-800 rounded-xl p-2.5">
-                <div>
-                  <div class="text-slate-400">Duration</div>
-                  <div class="font-mono font-medium" x-text="tts.result.duration_sec + 's'"></div>
-                </div>
-                <div>
-                  <div class="text-slate-400">Process</div>
-                  <div class="font-mono font-medium" x-text="tts.result.process_sec + 's'"></div>
-                </div>
-                <div>
-                  <div class="text-slate-400">RTF</div>
-                  <div class="font-mono font-medium text-emerald-400" x-text="tts.result.rtf + 'x'"></div>
-                </div>
-              </div>
-              <a :href="tts.result.audio_url" download
-                class="block text-center w-full py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-medium transition">
-                ⬇ Download Audio
-              </a>
-            </div>
-          </template>
-          <template x-if="!tts.result">
-            <div class="text-xs text-slate-500 py-10 text-center border border-dashed border-slate-800 rounded-xl">
-              Generated audio & metrics will appear here.
-            </div>
-          </template>
         </div>
 
-        <div x-show="currentEngine() && !currentEngine().available"
-          class="bg-amber-950/40 border border-amber-800/60 rounded-2xl p-4 text-xs text-amber-200 space-y-2.5">
-          <div class="flex items-center justify-between gap-2">
-            <span class="font-semibold">Engine Not Installed</span>
-            <span class="px-2 py-0.5 rounded bg-slate-950 text-amber-300"
-              x-text="`Min RAM: ${currentEngine()?.min_ram_gb || 1} GB (You: ${sys.hardware?.ram_total_gb || '?'} GB)`"></span>
-          </div>
-          <p class="text-amber-200/80">Install engine ini langsung dari UI sesuai spesifikasi perangkat Anda:</p>
-          <button type="button" @click="installEngine(currentEngine())"
-            :disabled="installState.status === 'installing'"
-            class="w-full py-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-medium transition disabled:opacity-50">
-            <span x-show="installState.status !== 'installing'">⬇ Install <span x-text="currentEngine()?.display_name"></span></span>
-            <span x-show="installState.status === 'installing'" x-text="installState.message || 'Installing...'"></span>
+        <div class="flex items-center justify-between gap-3 pt-1">
+          <p class="text-xs text-slate-400" x-text="currentEngine()?.description"></p>
+          <button @click="generateTTS()" :disabled="tts.loading || !tts.text.trim()"
+            class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-sm font-medium transition whitespace-nowrap">
+            <span x-show="!tts.loading">Generate Speech</span>
+            <span x-show="tts.loading">Generating...</span>
           </button>
         </div>
       </div>
 
-      <!-- TTS History (Inline Below) -->
-      <div class="lg:col-span-3 bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+      <!-- TTS History (Inline Below, Top Item Highlighted) -->
+      <div class="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
         <div class="flex flex-wrap items-center justify-between gap-2">
           <div class="flex items-center gap-3">
             <h2 class="text-sm font-semibold">TTS History</h2>
@@ -276,14 +244,19 @@
         </div>
 
         <div class="space-y-2.5">
-          <template x-for="item in ttsHist.items" :key="item.id">
-            <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs space-y-2">
+          <template x-for="(item, idx) in ttsHist.items" :key="item.id">
+            <div class="rounded-xl p-3.5 text-xs space-y-2 border transition"
+              :class="(idx === 0 && ttsHist.page === 1) ? 'bg-indigo-950/50 border-indigo-500/80 shadow-md shadow-indigo-950/30' : 'bg-slate-950 border-slate-800'">
               <div class="flex flex-wrap items-center justify-between gap-2">
-                <div class="flex items-center gap-2.5">
+                <div class="flex flex-wrap items-center gap-2">
                   <input type="checkbox" :value="item.id" x-model.number="ttsHist.selected" class="rounded accent-indigo-500" />
+                  <span x-show="idx === 0 && ttsHist.page === 1"
+                    class="px-1.5 py-0.5 rounded bg-indigo-600 text-white font-semibold text-[10px]">LATEST</span>
                   <span class="font-medium text-indigo-300" x-text="item.engine"></span>
                   <span x-show="item.voice" class="text-slate-400" x-text="item.voice"></span>
                   <span class="text-slate-500" x-text="item.created_at"></span>
+                  <span x-show="item.duration_sec > 0" class="text-emerald-400/90 font-mono"
+                    x-text="`· ${item.duration_sec}s (gen ${item.process_sec}s, RTF ${item.rtf}x)`"></span>
                 </div>
                 <div class="flex items-center gap-2">
                   <template x-if="item.audio_filename">
@@ -295,9 +268,9 @@
                   <button @click="deleteHistoryItem('tts', item.id)" class="text-rose-400 hover:text-rose-300 px-1.5">Hapus</button>
                 </div>
               </div>
-              <p class="text-slate-300 whitespace-pre-wrap line-clamp-2" x-text="item.input_text"></p>
+              <p class="text-slate-200 whitespace-pre-wrap line-clamp-2" x-text="item.input_text"></p>
               <template x-if="item.audio_filename">
-                <audio controls :src="`/api/history/${item.id}/audio`" class="w-full h-8"></audio>
+                <audio controls :autoplay="tts.result && tts.result.id === item.id" :src="`/api/history/${item.id}/audio`" class="w-full h-8"></audio>
               </template>
             </div>
           </template>
