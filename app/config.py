@@ -37,6 +37,8 @@ class Settings(BaseSettings):
 
     # Default Webhook URL (optional, overridden by per-job webhook_url)
     webhook_url: str = ""
+    # Allow localhost / 127.0.0.1 for local webhook/file_url testing (set false on strict public VPS)
+    allow_local_urls: bool = True
 
     # Storage
     data_dir: str = "./data"

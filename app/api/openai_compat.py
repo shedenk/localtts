@@ -141,14 +141,20 @@ def _validate_remote_url(url: str, label: str = "URL") -> str:
     host = parsed.hostname
     if not host:
         raise HTTPException(status_code=400, detail=f"Invalid {label} hostname.")
+    allow_local = get_settings().allow_local_urls
     try:
         infos = socket.getaddrinfo(host, None)
         for info in infos:
             ip = ipaddress.ip_address(info[4][0])
-            if ip.is_loopback or ip.is_link_local or ip.is_multicast or ip.is_unspecified:
+            if ip.is_link_local or ip.is_multicast or ip.is_unspecified:
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Blocked {label}: loopback and link-local/metadata addresses are not allowed.",
+                    detail=f"Blocked {label}: link-local/metadata addresses are not allowed.",
+                )
+            if ip.is_loopback and not allow_local:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Blocked {label}: loopback address disabled (set ALLOW_LOCAL_URLS=true in .env to allow).",
                 )
     except HTTPException:
         raise

@@ -148,6 +148,7 @@ Untuk langsung menginstal OmniVoice & Qwen3-TTS saat build Docker, set `INSTALL_
 | `TTS_MAX_CHARS` | `5000` | Batas maksimal karakter teks untuk TTS (`0` = tanpa batas) |
 | `STT_MAX_FILE_MB` | `50` | Batas maksimal ukuran file audio/video (MB) untuk transkrip STT (`0` = tanpa batas) |
 | `WEBHOOK_URL` | *(kosong)* | Default URL webhook untuk notifikasi *async job* (`/v1/jobs/*`) saat selesai |
+| `ALLOW_LOCAL_URLS` | `true` | Izinkan `localhost`/`127.0.0.1` pada `file_url` & `webhook_url` (set `false` di VPS publik ketat) |
 
 ---
 
