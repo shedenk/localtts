@@ -111,3 +111,55 @@ def get_settings() -> Settings:
     settings = Settings()
     settings.ensure_dirs()
     return settings
+
+
+def update_env_file(updates: dict[str, Any], env_path: Path | str = ".env") -> dict[str, str]:
+    path = Path(env_path)
+    lines: list[str] = []
+    found_keys: set[str] = set()
+
+    if path.exists():
+        raw_lines = path.read_text(encoding="utf-8").splitlines()
+    elif Path(".env.example").exists():
+        raw_lines = Path(".env.example").read_text(encoding="utf-8").splitlines()
+    else:
+        raw_lines = []
+
+    for line in raw_lines:
+        stripped = line.strip()
+        if stripped and not stripped.startswith("#") and "=" in stripped:
+            k, _ = stripped.split("=", 1)
+            k = k.strip()
+            if k in updates:
+                val = updates[k]
+                if isinstance(val, bool):
+                    v_str = "true" if val else "false"
+                else:
+                    v_str = str(val) if val is not None else ""
+                lines.append(f"{k}={v_str}")
+                found_keys.add(k)
+            else:
+                lines.append(line)
+        else:
+            lines.append(line)
+
+    for k, val in updates.items():
+        if k not in found_keys:
+            if isinstance(val, bool):
+                v_str = "true" if val else "false"
+            else:
+                v_str = str(val) if val is not None else ""
+            lines.append(f"{k}={v_str}")
+
+    content = "\n".join(lines).strip() + "\n"
+    path.write_text(content, encoding="utf-8")
+
+    # Update os.environ
+    for k, val in updates.items():
+        if isinstance(val, bool):
+            os.environ[k] = "true" if val else "false"
+        else:
+            os.environ[k] = str(val) if val is not None else ""
+
+    get_settings.cache_clear()
+    return {k: str(val) for k, val in updates.items()}

@@ -33,6 +33,22 @@ class EngineManager:
             if not enabled or eng.name in enabled:
                 self._engines[eng.name] = eng
 
+    def reload_enabled_engines(self) -> None:
+        """Reload registered engines according to current settings.enabled_engine_list."""
+        with self._lock:
+            enabled = set(get_settings().enabled_engine_list)
+            all_engines: list[BaseEngine] = [
+                KokoroEngine(),
+                EdgeTTSEngine(),
+                OmniVoiceEngine(),
+                Qwen3TTSEngine(),
+                WhisperEngine(),
+            ]
+            self._engines.clear()
+            for eng in all_engines:
+                if not enabled or eng.name in enabled:
+                    self._engines[eng.name] = eng
+
     def get(self, name: str) -> BaseEngine:
         key = name.strip().lower()
         # Aliases for convenience (e.g. OpenAI model names)

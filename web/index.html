@@ -66,6 +66,8 @@
         class="px-4 py-2.5 text-sm font-medium border-b-2 transition whitespace-nowrap">⚡ API Docs</button>
       <button @click="tab='system'; loadSystem(); loadReadme(); loadLogs()" :class="tab==='system' ? 'border-indigo-500 text-white' : 'border-transparent text-slate-400 hover:text-slate-200'"
         class="px-4 py-2.5 text-sm font-medium border-b-2 transition whitespace-nowrap">🖥️ System & Credits</button>
+      <button @click="tab='settings'; loadSettings()" :class="tab==='settings' ? 'border-indigo-500 text-white' : 'border-transparent text-slate-400 hover:text-slate-200'"
+        class="px-4 py-2.5 text-sm font-medium border-b-2 transition whitespace-nowrap">⚙️ Settings (.env)</button>
     </div>
   </header>
 
@@ -1100,6 +1102,284 @@
           class="bg-slate-950 border border-slate-800 rounded-xl p-4 text-xs text-slate-300 overflow-x-auto max-h-[520px] overflow-y-auto"></pre>
       </div>
     </section>
+
+    <!-- TAB 6: SETTINGS (.env) -->
+    <section x-show="tab==='settings'" class="space-y-6">
+      <!-- Header Banner & Action Bar -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="text-xl">⚙️</span>
+            <h2 class="text-base font-semibold text-slate-100">Konfigurasi Environment (.env)</h2>
+          </div>
+          <p class="text-xs text-slate-400 mt-1">Ubah konfigurasi server, keamanan, kuota, hardware &amp; engine, serta kebijakan auto-clean langsung dari UI tanpa perlu edit file .env manual.</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button type="button" @click="loadSettings()" :disabled="settingsLoading"
+            class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-200 transition flex items-center gap-1.5 disabled:opacity-50">
+            <span>🔄</span>
+            <span x-text="settingsLoading ? 'Memuat...' : 'Reset Form'"></span>
+          </button>
+          <button type="button" @click="saveSettings()" :disabled="settingsSaving"
+            class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs font-medium text-white shadow-lg shadow-indigo-600/30 transition flex items-center gap-1.5 disabled:opacity-50">
+            <span>💾</span>
+            <span x-text="settingsSaving ? 'Menyimpan...' : 'Simpan Pengaturan (.env)'"></span>
+          </button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- 1. Server & Host -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+          <div class="flex items-center gap-2 border-b border-slate-800 pb-3">
+            <span class="text-base">🖥️</span>
+            <div>
+              <h3 class="text-sm font-semibold text-slate-100">Server &amp; HTTP</h3>
+              <p class="text-[11px] text-slate-400">Nama aplikasi dan port binding server</p>
+            </div>
+          </div>
+          <div class="space-y-3 text-xs">
+            <div>
+              <label class="block text-slate-300 font-medium mb-1">Nama Aplikasi (<code class="text-indigo-300">APP_NAME</code>)</label>
+              <input type="text" x-model="settingsData.app_name" placeholder="LocalTTS"
+                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-indigo-500">
+            </div>
+            <div>
+              <label class="block text-slate-300 font-medium mb-1">Port Server (<code class="text-indigo-300">PORT</code>)</label>
+              <input type="number" x-model.number="settingsData.port" placeholder="8000" min="1" max="65535"
+                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-indigo-500 font-mono">
+              <span class="text-[11px] text-slate-500 mt-1 block">Catatan: Mengubah port membutuhkan restart service/container agar port baru aktif.</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. Keamanan & Autentikasi -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+          <div class="flex items-center gap-2 border-b border-slate-800 pb-3">
+            <span class="text-base">🔐</span>
+            <div>
+              <h3 class="text-sm font-semibold text-slate-100">Keamanan &amp; Autentikasi</h3>
+              <p class="text-[11px] text-slate-400">Proteksi login web UI dan API Key untuk endpoint /v1/*</p>
+            </div>
+          </div>
+          <div class="space-y-3 text-xs">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-slate-300 font-medium mb-1">Username Login UI (<code class="text-indigo-300">AUTH_USERNAME</code>)</label>
+                <input type="text" x-model="settingsData.auth_username" placeholder="admin (kosong = tanpa login)"
+                  class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-indigo-500">
+              </div>
+              <div>
+                <label class="block text-slate-300 font-medium mb-1">Password Login UI (<code class="text-indigo-300">AUTH_PASSWORD</code>)</label>
+                <div class="relative">
+                  <input :type="showAuthPass ? 'text' : 'password'" x-model="settingsData.auth_password" placeholder="••••••••"
+                    class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 pr-9 text-slate-200 focus:outline-none focus:border-indigo-500 font-mono">
+                  <button type="button" @click="showAuthPass = !showAuthPass" class="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-200 text-xs">
+                    <span x-text="showAuthPass ? '🙈' : '👁️'"></span>
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div>
+              <div class="flex items-center justify-between mb-1">
+                <label class="text-slate-300 font-medium">API Key (<code class="text-indigo-300">API_KEY</code>)</label>
+                <button type="button" @click="generateApiKey()" class="text-[11px] text-indigo-400 hover:text-indigo-300 underline">🎲 Buat Key Acak</button>
+              </div>
+              <div class="relative">
+                <input :type="showApiKey ? 'text' : 'password'" x-model="settingsData.api_key" placeholder="Kosongkan jika API ingin diakses bebas"
+                  class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 pr-9 text-slate-200 focus:outline-none focus:border-indigo-500 font-mono">
+                <button type="button" @click="showApiKey = !showApiKey" class="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-200 text-xs">
+                  <span x-text="showApiKey ? '🙈' : '👁️'"></span>
+                </button>
+              </div>
+              <span class="text-[11px] text-slate-500 mt-1 block">Jika diisi, klien API wajib mengirim <code class="text-slate-400">Authorization: Bearer &lt;key&gt;</code> atau header kustom.</span>
+            </div>
+            <div>
+              <label class="block text-slate-300 font-medium mb-1">Header API Key (<code class="text-indigo-300">API_KEY_HEADER</code>)</label>
+              <input type="text" x-model="settingsData.api_key_header" placeholder="X-API-Key"
+                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-indigo-500 font-mono">
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. Hardware & Engine -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+          <div class="flex items-center gap-2 border-b border-slate-800 pb-3">
+            <span class="text-base">🚀</span>
+            <div>
+              <h3 class="text-sm font-semibold text-slate-100">Hardware &amp; Engine</h3>
+              <p class="text-[11px] text-slate-400">Pilihan device compute, engine aktif, dan auto-unload RAM</p>
+            </div>
+          </div>
+          <div class="space-y-4 text-xs">
+            <div>
+              <label class="block text-slate-300 font-medium mb-1">Compute Device (<code class="text-indigo-300">DEVICE</code>)</label>
+              <select x-model="settingsData.device"
+                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-indigo-500">
+                <option value="auto">auto — Deteksi otomatis (CUDA &gt; MPS &gt; CPU)</option>
+                <option value="cuda">cuda — Nvidia GPU (CUDA)</option>
+                <option value="mps">mps — Apple Silicon GPU (Metal Performance Shaders)</option>
+                <option value="cpu">cpu — Prosesor CPU standar</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-slate-300 font-medium mb-1.5">Engine Aktif (<code class="text-indigo-300">ENABLED_ENGINES</code>)</label>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <label class="flex items-center gap-2 bg-slate-950 border border-slate-800 rounded-xl p-2.5 cursor-pointer hover:border-slate-700 transition">
+                  <input type="checkbox" :checked="isEngineEnabled('kokoro')" @change="toggleEngine('kokoro')" class="rounded border-slate-700 text-indigo-600 focus:ring-0">
+                  <div>
+                    <div class="font-medium text-slate-200">Kokoro-82M</div>
+                    <div class="text-[10px] text-slate-500">TTS Cepat lokal (EN/JA)</div>
+                  </div>
+                </label>
+                <label class="flex items-center gap-2 bg-slate-950 border border-slate-800 rounded-xl p-2.5 cursor-pointer hover:border-slate-700 transition">
+                  <input type="checkbox" :checked="isEngineEnabled('edge')" @change="toggleEngine('edge')" class="rounded border-slate-700 text-indigo-600 focus:ring-0">
+                  <div>
+                    <div class="font-medium text-slate-200">Edge-TTS</div>
+                    <div class="text-[10px] text-slate-500">Multi-bahasa &amp; Indo (0 MB RAM)</div>
+                  </div>
+                </label>
+                <label class="flex items-center gap-2 bg-slate-950 border border-slate-800 rounded-xl p-2.5 cursor-pointer hover:border-slate-700 transition">
+                  <input type="checkbox" :checked="isEngineEnabled('whisper')" @change="toggleEngine('whisper')" class="rounded border-slate-700 text-indigo-600 focus:ring-0">
+                  <div>
+                    <div class="font-medium text-slate-200">Faster-Whisper</div>
+                    <div class="text-[10px] text-slate-500">Speech-to-Text STT</div>
+                  </div>
+                </label>
+                <label class="flex items-center gap-2 bg-slate-950 border border-slate-800 rounded-xl p-2.5 cursor-pointer hover:border-slate-700 transition">
+                  <input type="checkbox" :checked="isEngineEnabled('omnivoice')" @change="toggleEngine('omnivoice')" class="rounded border-slate-700 text-indigo-600 focus:ring-0">
+                  <div>
+                    <div class="font-medium text-slate-200">OmniVoice</div>
+                    <div class="text-[10px] text-slate-500">Zero-shot Voice Cloning</div>
+                  </div>
+                </label>
+                <label class="flex items-center gap-2 bg-slate-950 border border-slate-800 rounded-xl p-2.5 cursor-pointer hover:border-slate-700 transition sm:col-span-2">
+                  <input type="checkbox" :checked="isEngineEnabled('qwen3')" @change="toggleEngine('qwen3')" class="rounded border-slate-700 text-indigo-600 focus:ring-0">
+                  <div>
+                    <div class="font-medium text-slate-200">Qwen3-TTS</div>
+                    <div class="text-[10px] text-slate-500">Model neural generatif 0.6B</div>
+                  </div>
+                </label>
+              </div>
+            </div>
+            <div>
+              <label class="block text-slate-300 font-medium mb-1">Otomatis Unload Model dari RAM (<code class="text-indigo-300">IDLE_UNLOAD_SECONDS</code>)</label>
+              <div class="flex items-center gap-2">
+                <input type="number" x-model.number="settingsData.idle_unload_seconds" min="0" step="30"
+                  class="w-32 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-indigo-500 font-mono">
+                <span class="text-slate-400">detik (0 = jangan unload)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. Batas (Limits) & Webhook -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+          <div class="flex items-center gap-2 border-b border-slate-800 pb-3">
+            <span class="text-base">⏱️</span>
+            <div>
+              <h3 class="text-sm font-semibold text-slate-100">Batas (Limits) &amp; Webhook</h3>
+              <p class="text-[11px] text-slate-400">Maksimal karakter TTS, batas ukuran file STT, dan webhook</p>
+            </div>
+          </div>
+          <div class="space-y-3 text-xs">
+            <div>
+              <label class="block text-slate-300 font-medium mb-1">Batas Karakter Teks TTS (<code class="text-indigo-300">TTS_MAX_CHARS</code>)</label>
+              <div class="flex items-center gap-2">
+                <input type="number" x-model.number="settingsData.tts_max_chars" min="0" step="500"
+                  class="w-36 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-indigo-500 font-mono">
+                <span class="text-slate-400">karakter (0 = tanpa batas)</span>
+              </div>
+            </div>
+            <div>
+              <label class="block text-slate-300 font-medium mb-1">Batas Ukuran Upload STT (<code class="text-indigo-300">STT_MAX_FILE_MB</code>)</label>
+              <div class="flex items-center gap-2">
+                <input type="number" x-model.number="settingsData.stt_max_file_mb" min="0" step="10"
+                  class="w-36 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-indigo-500 font-mono">
+                <span class="text-slate-400">MB (0 = tanpa batas)</span>
+              </div>
+            </div>
+            <div>
+              <label class="block text-slate-300 font-medium mb-1">Default Webhook URL (<code class="text-indigo-300">WEBHOOK_URL</code>)</label>
+              <input type="url" x-model="settingsData.webhook_url" placeholder="https://webhook.site/..."
+                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-indigo-500 font-mono">
+              <span class="text-[11px] text-slate-500 mt-1 block">URL tujuan notifikasi saat async job selesai.</span>
+            </div>
+            <div class="pt-1">
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" x-model="settingsData.allow_local_urls" class="rounded border-slate-700 text-indigo-600 focus:ring-0">
+                <span class="text-slate-300">Izinkan URL lokal 127.0.0.1 / localhost (<code class="text-indigo-300">ALLOW_LOCAL_URLS</code>)</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- 5. Kebijakan Auto-Clean Storage & Log -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4 lg:col-span-2">
+          <div class="flex items-center gap-2 border-b border-slate-800 pb-3">
+            <span class="text-base">💾</span>
+            <div>
+              <h3 class="text-sm font-semibold text-slate-100">Kebijakan Auto-Clean Storage &amp; Retensi Log</h3>
+              <p class="text-[11px] text-slate-400">Pencegahan kapasitas disk penuh dan pembersihan otomatis berkala</p>
+            </div>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+            <div class="bg-slate-950 border border-slate-800 rounded-xl p-3.5 space-y-2">
+              <label class="block text-slate-300 font-medium">Batas Disk Auto-Clean (<code class="text-indigo-300">AUTO_CLEAN_DISK_PERCENT</code>)</label>
+              <div class="flex items-center gap-2">
+                <input type="number" x-model.number="settingsData.auto_clean_disk_percent" min="10" max="99"
+                  class="w-24 bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-slate-200 font-mono text-center">
+                <span class="text-slate-400">% kapasitas disk</span>
+              </div>
+              <p class="text-[11px] text-slate-500">Pembersihan file output tertua otomatis terpicu jika disk mencapai ambang ini.</p>
+            </div>
+
+            <div class="bg-slate-950 border border-slate-800 rounded-xl p-3.5 space-y-2">
+              <label class="block text-slate-300 font-medium">Retensi File Audio Lama (<code class="text-indigo-300">AUTO_CLEAN_RETENTION_DAYS</code>)</label>
+              <div class="flex items-center gap-2">
+                <input type="number" x-model.number="settingsData.auto_clean_retention_days" min="1" max="365"
+                  class="w-24 bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-slate-200 font-mono text-center">
+                <span class="text-slate-400">hari</span>
+              </div>
+              <p class="text-[11px] text-slate-500">Hapus file audio output lama yang berumur lebih dari sekian hari.</p>
+            </div>
+
+            <div class="bg-slate-950 border border-slate-800 rounded-xl p-3.5 space-y-2">
+              <label class="block text-slate-300 font-medium">Retensi Log Sistem (<code class="text-indigo-300">LOG_RETENTION_DAYS</code>)</label>
+              <div class="flex items-center gap-2">
+                <input type="number" x-model.number="settingsData.log_retention_days" min="1" max="365"
+                  class="w-24 bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-slate-200 font-mono text-center">
+                <span class="text-slate-400">hari</span>
+              </div>
+              <p class="text-[11px] text-slate-500">Log sistem yang berumur lebih dari sekian hari otomatis dipangkas.</p>
+            </div>
+
+            <div class="bg-slate-950 border border-slate-800 rounded-xl p-3.5 space-y-2">
+              <label class="block text-slate-300 font-medium">Maksimal Ukuran File Log (<code class="text-indigo-300">LOG_MAX_MB</code>)</label>
+              <div class="flex items-center gap-2">
+                <input type="number" x-model.number="settingsData.log_max_mb" min="1" max="500"
+                  class="w-24 bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-slate-200 font-mono text-center">
+                <span class="text-slate-400">MB</span>
+              </div>
+              <p class="text-[11px] text-slate-500">File log otomatis dirotasi jika ukurannya melebihi batas ini.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Sticky Action Bar -->
+      <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3 backdrop-blur shadow-xl">
+        <div class="text-xs text-slate-400 flex items-center gap-2">
+          <span>💡</span>
+          <span>Perubahan langsung tersimpan ke file <code class="text-slate-200">.env</code> dan di-reload ke runtime server tanpa perlu restart manual (kecuali port HTTP).</span>
+        </div>
+        <button type="button" @click="saveSettings()" :disabled="settingsSaving"
+          class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold text-white shadow-lg shadow-indigo-600/30 transition flex items-center gap-2 disabled:opacity-50">
+          <span>💾</span>
+          <span x-text="settingsSaving ? 'Menyimpan Pengaturan...' : 'Simpan Semua Pengaturan (.env)'"></span>
+        </button>
+      </div>
+    </section>
   </main>
 
   <footer class="max-w-6xl mx-auto px-4 pb-6 pt-2 text-[11px] text-slate-500 flex flex-wrap items-center justify-between gap-2">
@@ -1228,6 +1508,29 @@
         logs: [],
         logLevel: 'ALL',
         logsLoading: false,
+        settingsData: {
+          app_name: 'LocalTTS',
+          port: 8000,
+          auth_username: '',
+          auth_password: '',
+          api_key: '',
+          api_key_header: 'X-API-Key',
+          device: 'auto',
+          enabled_engines: 'kokoro,edge,whisper,omnivoice,qwen3',
+          idle_unload_seconds: 300,
+          tts_max_chars: 5000,
+          stt_max_file_mb: 50,
+          webhook_url: '',
+          allow_local_urls: true,
+          auto_clean_disk_percent: 75,
+          auto_clean_retention_days: 30,
+          log_retention_days: 3,
+          log_max_mb: 10,
+        },
+        settingsLoading: false,
+        settingsSaving: false,
+        showAuthPass: false,
+        showApiKey: false,
 
         async init() {
           await this.loadSystem();
@@ -1235,6 +1538,7 @@
           await this.loadHistory('tts');
           this.loadReadme();
           this.loadLogs();
+          this.loadSettings();
           this.onEngineChange();
           this.initPolling();
         },
@@ -1322,6 +1626,86 @@
               }
             }
           );
+        },
+        isEngineEnabled(name) {
+          const list = (this.settingsData.enabled_engines || '').split(',').map(s => s.trim().toLowerCase());
+          return list.includes(name);
+        },
+        toggleEngine(name) {
+          let list = (this.settingsData.enabled_engines || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+          if (list.includes(name)) {
+            list = list.filter(n => n !== name);
+          } else {
+            list.push(name);
+          }
+          this.settingsData.enabled_engines = list.join(',');
+        },
+        generateApiKey() {
+          const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+          let key = 'ltk_';
+          for (let i = 0; i < 32; i++) {
+            key += chars.charAt(Math.floor(Math.random() * chars.length));
+          }
+          this.settingsData.api_key = key;
+          this.showApiKey = true;
+          this.notify('API Key acak baru berhasil dibuat.');
+        },
+        async loadSettings() {
+          this.settingsLoading = true;
+          try {
+            const res = await fetch('/api/settings');
+            if (res.ok) {
+              const data = await res.json();
+              this.settingsData = { ...this.settingsData, ...data };
+            } else if (res.status !== 401) {
+              this.notify('Gagal memuat pengaturan .env', 'error');
+            }
+          } catch (e) {
+            console.error('Failed to load settings', e);
+          } finally {
+            this.settingsLoading = false;
+          }
+        },
+        async saveSettings() {
+          this.settingsSaving = true;
+          try {
+            const payload = {
+              app_name: this.settingsData.app_name,
+              port: Number(this.settingsData.port) || 8000,
+              auth_username: this.settingsData.auth_username || '',
+              auth_password: this.settingsData.auth_password || '',
+              api_key: this.settingsData.api_key || '',
+              api_key_header: this.settingsData.api_key_header || 'X-API-Key',
+              device: this.settingsData.device,
+              enabled_engines: this.settingsData.enabled_engines,
+              idle_unload_seconds: Number(this.settingsData.idle_unload_seconds) || 0,
+              tts_max_chars: Number(this.settingsData.tts_max_chars) || 0,
+              stt_max_file_mb: Number(this.settingsData.stt_max_file_mb) || 0,
+              webhook_url: this.settingsData.webhook_url || '',
+              allow_local_urls: Boolean(this.settingsData.allow_local_urls),
+              auto_clean_disk_percent: Number(this.settingsData.auto_clean_disk_percent) || 75,
+              auto_clean_retention_days: Number(this.settingsData.auto_clean_retention_days) || 30,
+              log_retention_days: Number(this.settingsData.log_retention_days) || 3,
+              log_max_mb: Number(this.settingsData.log_max_mb) || 10,
+            };
+            const res = await fetch('/api/settings', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload),
+            });
+            const data = await res.json();
+            if (res.ok) {
+              this.notify(data.message || 'Pengaturan .env berhasil disimpan!');
+              await this.loadSystem();
+              await this.loadSettings();
+            } else {
+              this.notify(data.detail || 'Gagal menyimpan pengaturan', 'error');
+            }
+          } catch (e) {
+            this.notify('Error saat menyimpan pengaturan', 'error');
+          } finally {
+            this.settingsSaving = false;
+          }
         },
         ttsEngines() {
           return (this.sys.engines || []).filter(e => e.kind === 'tts');

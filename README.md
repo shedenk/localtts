@@ -81,6 +81,11 @@ Berikut adalah tampilan antarmuka web LocalTTS yang modern, responsif, dan diran
 
 ---
 
+### 7. ⚙️ Menu Pengaturan Environment (.env)
+> Kelola semua konfigurasi `.env` secara visual langsung dari UI: nama aplikasi, port HTTP, proteksi login UI (username/password), API Key & generator kunci acak, compute device (`CUDA` / `MPS` / `CPU`), seleksi engine aktif (Kokoro, Edge, Whisper, OmniVoice, Qwen3), batas karakter/file, default webhook, hingga kebijakan auto-clean disk (75%) dan retensi file audio lama (30 hari). Perubahan langsung tersimpan ke file `.env` dan di-reload ke runtime server tanpa perlu akses terminal / SSH manual.
+
+---
+
 ## 🚀 Fitur Unggulan
 
 - **Multi-Engine dalam 1 Service:**
@@ -101,6 +106,8 @@ Berikut adalah tampilan antarmuka web LocalTTS yang modern, responsif, dan diran
 - **Keamanan Sederhana Berbasis `.env`:**
   - Proteksi Web UI via `AUTH_USERNAME` dan `AUTH_PASSWORD`.
   - Proteksi API via `API_KEY` (mendukung `Authorization: Bearer <KEY>` dan `X-API-Key: <KEY>`).
+- **Menu Pengaturan Visual `.env`:**
+  - Ubah seluruh parameter server, keamanan (username/password/API Key & random generator), hardware (`auto`/`cuda`/`mps`/`cpu`), seleksi engine aktif, batas kuota, webhook, serta kebijakan auto-clean disk langsung dari antarmuka Web UI tanpa perlu terminal / SSH / nano manual.
 - **Penyimpanan Lokal Mandiri:**
   - Database **SQLite WAL** tersimpan rapi di `data/tts_local.db`.
   - File output audio disimpan di folder `data/outputs/`.

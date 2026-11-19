@@ -9,14 +9,16 @@ import threading
 import time
 import uuid
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
+
+from pydantic import BaseModel
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse
 
 from app.auth import require_ui_auth
-from app.config import get_settings
+from app.config import get_settings, update_env_file
 from app.core.audio_utils import MIME_TYPES, encode_audio, save_audio_file
 from app.core.hardware import get_hardware_info
 from app.core.logger import clear_logs, get_recent_logs, log_info, log_warning
@@ -78,6 +80,138 @@ def system_logs_clear():
 def system_clean_trigger():
     result = run_storage_cleanup()
     return result
+
+
+class SettingsUpdateRequest(BaseModel):
+    app_name: Optional[str] = None
+    port: Optional[int] = None
+    auth_username: Optional[str] = None
+    auth_password: Optional[str] = None
+    session_secret: Optional[str] = None
+    api_key: Optional[str] = None
+    api_key_header: Optional[str] = None
+    device: Optional[str] = None
+    enabled_engines: Optional[str] = None
+    idle_unload_seconds: Optional[int] = None
+    tts_max_chars: Optional[int] = None
+    stt_max_file_mb: Optional[int] = None
+    webhook_url: Optional[str] = None
+    allow_local_urls: Optional[bool] = None
+    auto_clean_disk_percent: Optional[int] = None
+    auto_clean_retention_days: Optional[int] = None
+    log_retention_days: Optional[int] = None
+    log_max_mb: Optional[int] = None
+
+
+@router.get("/settings")
+def get_settings_endpoint():
+    s = get_settings()
+    return {
+        "app_name": s.app_name,
+        "host": s.host,
+        "port": s.port,
+        "auth_username": s.auth_username,
+        "auth_password": s.auth_password,
+        "session_secret": s.session_secret,
+        "api_key": s.api_key,
+        "api_key_header": s.api_key_header,
+        "device": s.device,
+        "enabled_engines": s.enabled_engines,
+        "enabled_engine_list": s.enabled_engine_list,
+        "idle_unload_seconds": s.idle_unload_seconds,
+        "tts_max_chars": s.tts_max_chars,
+        "stt_max_file_mb": s.stt_max_file_mb,
+        "webhook_url": s.webhook_url,
+        "allow_local_urls": s.allow_local_urls,
+        "auto_clean_disk_percent": s.auto_clean_disk_percent,
+        "auto_clean_retention_days": s.auto_clean_retention_days,
+        "log_retention_days": s.log_retention_days,
+        "log_max_mb": s.log_max_mb,
+        "ui_auth_enabled": s.ui_auth_enabled,
+        "api_auth_enabled": s.api_auth_enabled,
+    }
+
+
+@router.post("/settings")
+def update_settings_endpoint(req: SettingsUpdateRequest):
+    updates: dict[str, Any] = {}
+
+    if req.app_name is not None:
+        updates["APP_NAME"] = req.app_name.strip()
+    if req.port is not None:
+        if req.port < 1 or req.port > 65535:
+            raise HTTPException(400, "PORT harus berada di antara 1 dan 65535")
+        updates["PORT"] = req.port
+    if req.auth_username is not None:
+        updates["AUTH_USERNAME"] = req.auth_username.strip()
+    if req.auth_password is not None:
+        updates["AUTH_PASSWORD"] = req.auth_password.strip()
+    if req.session_secret is not None:
+        updates["SESSION_SECRET"] = req.session_secret.strip()
+    if req.api_key is not None:
+        updates["API_KEY"] = req.api_key.strip()
+    if req.api_key_header is not None:
+        updates["API_KEY_HEADER"] = req.api_key_header.strip()
+    if req.device is not None:
+        dev = req.device.strip().lower()
+        if dev not in ["auto", "cuda", "mps", "cpu"]:
+            raise HTTPException(400, "DEVICE harus bernilai 'auto', 'cuda', 'mps', atau 'cpu'")
+        updates["DEVICE"] = dev
+    if req.enabled_engines is not None:
+        updates["ENABLED_ENGINES"] = req.enabled_engines.strip()
+    if req.idle_unload_seconds is not None:
+        if req.idle_unload_seconds < 0:
+            raise HTTPException(400, "IDLE_UNLOAD_SECONDS tidak boleh negatif")
+        updates["IDLE_UNLOAD_SECONDS"] = req.idle_unload_seconds
+    if req.tts_max_chars is not None:
+        if req.tts_max_chars < 0:
+            raise HTTPException(400, "TTS_MAX_CHARS tidak boleh negatif")
+        updates["TTS_MAX_CHARS"] = req.tts_max_chars
+    if req.stt_max_file_mb is not None:
+        if req.stt_max_file_mb < 0:
+            raise HTTPException(400, "STT_MAX_FILE_MB tidak boleh negatif")
+        updates["STT_MAX_FILE_MB"] = req.stt_max_file_mb
+    if req.webhook_url is not None:
+        updates["WEBHOOK_URL"] = req.webhook_url.strip()
+    if req.allow_local_urls is not None:
+        updates["ALLOW_LOCAL_URLS"] = bool(req.allow_local_urls)
+    if req.auto_clean_disk_percent is not None:
+        if req.auto_clean_disk_percent < 10 or req.auto_clean_disk_percent > 99:
+            raise HTTPException(400, "AUTO_CLEAN_DISK_PERCENT harus bernilai antara 10% dan 99%")
+        updates["AUTO_CLEAN_DISK_PERCENT"] = req.auto_clean_disk_percent
+    if req.auto_clean_retention_days is not None:
+        if req.auto_clean_retention_days < 1:
+            raise HTTPException(400, "AUTO_CLEAN_RETENTION_DAYS minimal 1 hari")
+        updates["AUTO_CLEAN_RETENTION_DAYS"] = req.auto_clean_retention_days
+    if req.log_retention_days is not None:
+        if req.log_retention_days < 1:
+            raise HTTPException(400, "LOG_RETENTION_DAYS minimal 1 hari")
+        updates["LOG_RETENTION_DAYS"] = req.log_retention_days
+    if req.log_max_mb is not None:
+        if req.log_max_mb < 1:
+            raise HTTPException(400, "LOG_MAX_MB minimal 1 MB")
+        updates["LOG_MAX_MB"] = req.log_max_mb
+
+    if not updates:
+        return {"ok": True, "message": "Tidak ada perubahan", "settings": get_settings_endpoint()}
+
+    # Update .env file & in-memory cache
+    update_env_file(updates)
+
+    # If enabled_engines changed, refresh manager
+    if "ENABLED_ENGINES" in updates:
+        try:
+            get_manager().reload_enabled_engines()
+        except Exception:
+            pass
+
+    log_info("SETTINGS", f"Konfigurasi .env diperbarui dari UI ({len(updates)} parameter diubah)")
+
+    return {
+        "ok": True,
+        "message": "Pengaturan .env berhasil disimpan dan langsung diterapkan!",
+        "settings": get_settings_endpoint(),
+    }
 
 
 @router.get("/engines")
