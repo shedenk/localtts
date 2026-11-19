@@ -13,10 +13,13 @@ Fokus pada **Bahasa Inggris (`en`)** dan **Bahasa Indonesia (`id`)**, lengkap de
   - **[Edge-TTS (`rany2/edge-tts`)](https://github.com/rany2/edge-tts):** Suara neural gratis untuk Bahasa Indonesia & Inggris dengan beban CPU/RAM hampir nol.
   - **[OmniVoice (`k2-fsa/OmniVoice`)](https://github.com/k2-fsa/OmniVoice):** Mendukung Bahasa Indonesia & Inggris, *zero-shot voice cloning*, dan *voice design*.
   - **[Qwen3-TTS (`QwenLM/Qwen3-TTS`)](https://github.com/QwenLM/Qwen3-TTS):** TTS ekspresif dengan *voice cloning* 3 detik & kontrol instruksi.
-  - **[Faster-Whisper](https://github.com/SYSTRAN/faster-whisper):** Transkripsi audio/video (STT) cepat dengan output JSON, Text, dan SRT.
-- **UI Sederhana & Informatif:**
-  - Kartu pilihan suara dengan badge **Gender** & **Bahasa**, serta tombol **▶ Sample** untuk mendengar contoh suara sebelum generate.
-  - Monitor penggunaan RAM, device aktif (`CUDA` / `MPS` / `CPU`), dan status model yang sedang *loaded*.
+  - **[Faster-Whisper](https://github.com/SYSTRAN/faster-whisper):** Transkripsi audio/video (STT) via upload file (`MP3`, `AAC`, `WAV`, `M4A`, dll) atau **URL (`file_url`)** dengan download hasil **TXT / CSV / SRT**.
+- **UI Sederhana & Informatif (5 Tab):**
+  - **🔊 TTS Studio:** Layout 2-kolom dengan kartu pilihan suara (badge **Gender** & **Bahasa**, tombol **▶ Sample** bawaan di `web/samples/`), *Voice Cloning*, serta **TTS History** langsung di bawahnya (highlight `✨ NEW` untuk hasil terbaru, **👁 Lihat** teks, **⬇ Download**, checkbox select/hapus/pagination).
+  - **📝 Whisper STT:** Upload file atau masukkan URL audio/video, download hasil **TXT / CSV / SRT**, serta **Whisper STT History** di bawahnya (**👁 Lihat**, **Copy**, **⬇ TXT/CSV**, select/hapus/pagination).
+  - **🎭 Voice Clones:** Kelola sample audio referensi untuk *voice cloning*.
+  - **⚡ API Docs:** Dokumentasi interaktif dengan contoh **cURL, Python, JavaScript, PHP, dan Go** (otomatis terisi `API_KEY` aktif).
+  - **🖥️ System & Credits:** Monitor RAM/CPU/GPU (`CUDA` / `MPS` / `CPU`), Load/Unload model, tombol **⬇ Install from UI** untuk OmniVoice & Qwen3-TTS sesuai spek perangkat, dan daftar sumber open-source.
 - **Manajemen Memori Otomatis:** *Lazy-load* saat dipakai dan *auto-unload* setelah idle (`IDLE_UNLOAD_SECONDS`).
 - **SQLite Database:** Menyimpan riwayat generasi TTS/STT, sample *voice clone*, dan log API di `data/tts_local.db`.
 - **Keamanan `.env` Only (Tanpa Setup DB User):**
@@ -30,8 +33,8 @@ Fokus pada **Bahasa Inggris (`en`)** dan **Bahasa Indonesia (`id`)**, lengkap de
 
 | Mode | CPU | RAM | Storage | GPU |
 | :--- | :--- | :--- | :--- | :--- |
-| **Mode Ringan (`--lite`)**<br>*(Edge-TTS, Kokoro-82M, Whisper `tiny`/`base`)* | 1–2 vCPU | **1–2 GB** | 2–3 GB | Tidak perlu (CPU only) |
-| **Mode Lengkap (Semua Engine)**<br>*(+ OmniVoice & Qwen3-TTS)* | 4+ vCPU / Apple Silicon | **8–16 GB** | 15–25 GB | Opsional (NVIDIA VRAM ≥ 6–8 GB atau Apple MPS) |
+| **Mode Standar (Default)**<br>*(Edge-TTS, Kokoro-82M, Whisper `tiny`/`base`)* | 1–2 vCPU | **1–2 GB** | 2–3 GB | Tidak perlu (CPU only) |
+| **Mode Lengkap (`--all` / Install dari UI)**<br>*(+ OmniVoice & Qwen3-TTS)* | 4+ vCPU / Apple Silicon | **8–16 GB** | 15–25 GB | Opsional (NVIDIA VRAM ≥ 6–8 GB atau Apple MPS) |
 
 > **Catatan:** Model dimuat secara *lazy-load* dan otomatis di-unload saat idle (`IDLE_UNLOAD_SECONDS=300`) agar hemat RAM/VRAM.
 
@@ -101,10 +104,10 @@ git clone https://github.com/shedenk/localtts.git
 cd localtts
 cp .env.example .env
 
-# Jalankan (otomatis build dengan semua engine & volume persistent)
+# Jalankan (build standar ringan: Kokoro, Edge-TTS, Faster-Whisper + volume persistent)
 docker compose up -d --build
 ```
-Untuk VPS dengan RAM kecil (misal 1–2 GB), set `INSTALL_ALL_ENGINES=false` di `.env` atau environment panel sebelum build agar hanya menginstal **Kokoro + Edge-TTS + Faster-Whisper**.
+Untuk langsung menginstal OmniVoice & Qwen3-TTS saat build Docker, set `INSTALL_ALL_ENGINES=true` di `.env` atau environment panel (butuh RAM ≥ 8 GB / GPU). Anda juga bisa menginstallnya belakangan langsung dari tab **🖥️ System & Credits** di UI.
 
 ---
 
@@ -118,7 +121,7 @@ Untuk VPS dengan RAM kecil (misal 1–2 GB), set `INSTALL_ALL_ENGINES=false` di 
    - `AUTH_PASSWORD=password_kuat_anda`
    - `SESSION_SECRET=random_string_panjang`
    - `API_KEY=` *(kosongkan jika API tanpa header, atau isi dengan secret key Anda)*
-   - `INSTALL_ALL_ENGINES=true` *(ubah ke `false` jika VPS RAM < 4 GB)*
+   - `INSTALL_ALL_ENGINES=false` *(default `false` untuk build cepat & ringan; set `true` jika VPS RAM ≥ 8 GB / GPU, atau install dari UI nanti)*
 4. Pastikan **Persistent Storage** untuk `/app/data` (SQLite + hasil audio) dan `/app/models` (cache model) aktif (sudah terkonfigurasi di `docker-compose.yml`).
 5. Klik **Deploy** dan arahkan domain Anda ke port `8000`.
 
@@ -149,7 +152,7 @@ Untuk VPS dengan RAM kecil (misal 1–2 GB), set `INSTALL_ALL_ENGINES=false` di 
 
 ## Dokumentasi API
 
-Dokumentasi lengkap seluruh endpoint OpenAI-compatible (`/v1/audio/speech`, `/v1/audio/transcriptions`), Voice Cloning, dan contoh integrasi Python/cURL tersedia di **[docs/API.md](docs/API.md)**.
+Dokumentasi lengkap seluruh endpoint OpenAI-compatible (`/v1/audio/speech`, `/v1/audio/transcriptions` dengan upload file maupun `file_url`), Voice Cloning, dan contoh **cURL, Python, JavaScript, PHP, dan Go** tersedia di **[docs/API.md](docs/API.md)** serta langsung di tab **⚡ API Docs** pada UI.
 
 Contoh cepat TTS Bahasa Indonesia:
 ```bash
