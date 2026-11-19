@@ -46,8 +46,10 @@
         class="px-4 py-2.5 text-sm font-medium border-b-2 transition whitespace-nowrap">🔊 TTS Studio</button>
       <button @click="tab='stt'" :class="tab==='stt' ? 'border-indigo-500 text-white' : 'border-transparent text-slate-400 hover:text-slate-200'"
         class="px-4 py-2.5 text-sm font-medium border-b-2 transition whitespace-nowrap">📝 Whisper STT</button>
-      <button @click="tab='history'; loadHistory(); loadClones()" :class="tab==='history' ? 'border-indigo-500 text-white' : 'border-transparent text-slate-400 hover:text-slate-200'"
-        class="px-4 py-2.5 text-sm font-medium border-b-2 transition whitespace-nowrap">🗂️ History & Clones</button>
+      <button @click="tab='history'; loadHistory()" :class="tab==='history' ? 'border-indigo-500 text-white' : 'border-transparent text-slate-400 hover:text-slate-200'"
+        class="px-4 py-2.5 text-sm font-medium border-b-2 transition whitespace-nowrap">📜 History</button>
+      <button @click="tab='clones'; loadClones()" :class="tab==='clones' ? 'border-indigo-500 text-white' : 'border-transparent text-slate-400 hover:text-slate-200'"
+        class="px-4 py-2.5 text-sm font-medium border-b-2 transition whitespace-nowrap">🎭 Voice Clones</button>
       <button @click="tab='api'; loadSystem()" :class="tab==='api' ? 'border-indigo-500 text-white' : 'border-transparent text-slate-400 hover:text-slate-200'"
         class="px-4 py-2.5 text-sm font-medium border-b-2 transition whitespace-nowrap">⚡ API Docs</button>
       <button @click="tab='system'; loadSystem()" :class="tab==='system' ? 'border-indigo-500 text-white' : 'border-transparent text-slate-400 hover:text-slate-200'"
@@ -328,59 +330,105 @@
       </div>
     </section>
 
-    <!-- TAB 3: HISTORY & CLONES -->
-    <section x-show="tab==='history'" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <div class="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
-        <div class="flex items-center justify-between">
+    <!-- TAB 3: HISTORY -->
+    <section x-show="tab==='history'" class="space-y-4">
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-2">
           <h2 class="text-sm font-semibold">Recent History (SQLite)</h2>
-          <button @click="loadHistory()" class="text-xs px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700">Refresh</button>
+          <div class="flex gap-2">
+            <button @click="loadHistory()" class="text-xs px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700">Refresh</button>
+          </div>
         </div>
-        <div class="space-y-2.5 max-h-[520px] overflow-y-auto">
+        <div class="space-y-3 max-h-[600px] overflow-y-auto pr-1">
           <template x-for="item in history" :key="item.id">
-            <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs space-y-2">
-              <div class="flex items-center justify-between gap-2">
-                <div class="flex items-center gap-2">
+            <div class="bg-slate-950 border border-slate-800 rounded-xl p-3.5 text-xs space-y-2.5">
+              <div class="flex flex-wrap items-center justify-between gap-2">
+                <div class="flex flex-wrap items-center gap-2">
                   <span class="px-1.5 py-0.5 rounded font-mono uppercase"
                     :class="item.kind==='tts' ? 'bg-indigo-950 text-indigo-300' : 'bg-teal-950 text-teal-300'"
                     x-text="item.kind"></span>
                   <span class="font-medium text-slate-200" x-text="item.engine"></span>
+                  <span x-show="item.voice" class="text-slate-400" x-text="'· ' + item.voice"></span>
                   <span class="text-slate-500" x-text="item.created_at"></span>
                 </div>
-                <button @click="deleteHistory(item.id)" class="text-rose-400 hover:text-rose-300">Delete</button>
+                <div class="flex items-center gap-2">
+                  <template x-if="item.kind==='tts' && item.audio_filename">
+                    <a :href="`/api/history/${item.id}/audio`" :download="item.audio_filename"
+                      class="px-2.5 py-1 rounded-md bg-slate-800 hover:bg-indigo-600 text-slate-200 transition">
+                      ⬇ Download <span class="uppercase" x-text="item.format || 'audio'"></span>
+                    </a>
+                  </template>
+                  <template x-if="item.kind==='stt' && item.output_text">
+                    <div class="flex gap-1.5">
+                      <button @click="copyText(item.output_text)"
+                        class="px-2 py-1 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-200">Copy</button>
+                      <button @click="downloadHistoryText(item, 'txt')"
+                        class="px-2 py-1 rounded-md bg-slate-800 hover:bg-teal-600 text-slate-200">⬇ TXT</button>
+                      <button @click="downloadHistoryText(item, 'csv')"
+                        class="px-2 py-1 rounded-md bg-slate-800 hover:bg-teal-600 text-slate-200">⬇ CSV</button>
+                    </div>
+                  </template>
+                  <button @click="deleteHistory(item.id)" class="text-rose-400 hover:text-rose-300 px-1.5">Delete</button>
+                </div>
               </div>
-              <p class="text-slate-300 line-clamp-2" x-text="item.kind==='tts' ? item.input_text : item.output_text"></p>
+              <p class="text-slate-300 whitespace-pre-wrap line-clamp-3" x-text="item.kind==='tts' ? item.input_text : item.output_text"></p>
               <template x-if="item.kind==='tts' && item.audio_filename">
                 <audio controls :src="`/api/history/${item.id}/audio`" class="w-full h-8"></audio>
               </template>
             </div>
           </template>
-          <div x-show="history.length===0" class="text-xs text-slate-500 text-center py-8">No history yet.</div>
+          <div x-show="history.length===0" class="text-xs text-slate-500 text-center py-10">No history yet.</div>
         </div>
       </div>
+    </section>
 
+    <!-- TAB 4: VOICE CLONES -->
+    <section x-show="tab==='clones'" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
-        <h2 class="text-sm font-semibold">Saved Voice Clones</h2>
-        <form @submit.prevent="createClone()" class="space-y-2.5 pb-4 border-b border-slate-800">
-          <input x-model="newClone.name" type="text" required placeholder="Clone name (e.g. MyVoice)"
-            class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs" />
-          <input x-model="newClone.ref_text" type="text" placeholder="Reference transcript (optional)"
-            class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs" />
-          <input type="file" accept="audio/*" required @change="newClone.file = $event.target.files[0]"
-            class="w-full text-xs text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-slate-800 file:text-slate-200" />
-          <button type="submit" class="w-full py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs font-medium">
+        <div>
+          <h2 class="text-sm font-semibold">Add Voice Clone Sample</h2>
+          <p class="text-xs text-slate-400 mt-0.5">Simpan audio referensi (3–10 detik) untuk dipakai di OmniVoice atau Qwen3-TTS.</p>
+        </div>
+        <form @submit.prevent="createClone()" class="space-y-3">
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Clone Name</label>
+            <input x-model="newClone.name" type="text" required placeholder="e.g. SuaraSaya"
+              class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs" />
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Reference Transcript (Optional)</label>
+            <input x-model="newClone.ref_text" type="text" placeholder="Teks yang diucapkan di audio referensi"
+              class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs" />
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Audio File</label>
+            <input type="file" accept="audio/*" required @change="newClone.file = $event.target.files[0]"
+              class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-slate-800 file:text-slate-200" />
+          </div>
+          <button type="submit" class="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs font-medium transition">
             Save Voice Sample
           </button>
         </form>
-        <div class="space-y-2">
+      </div>
+
+      <div class="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+        <div class="flex items-center justify-between">
+          <h2 class="text-sm font-semibold">Saved Voice Clones</h2>
+          <button @click="loadClones()" class="text-xs px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700">Refresh</button>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <template x-for="c in clones" :key="c.id">
-            <div class="flex items-center justify-between bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs">
-              <div>
-                <div class="font-medium text-slate-200" x-text="c.name"></div>
-                <div class="text-slate-500" x-text="c.created_at"></div>
+            <div class="flex items-center justify-between bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-3 text-xs">
+              <div class="min-w-0">
+                <div class="font-medium text-slate-200 truncate" x-text="c.name"></div>
+                <div class="text-slate-500 mt-0.5" x-text="c.created_at"></div>
               </div>
-              <button @click="deleteClone(c.id)" class="text-rose-400 hover:text-rose-300">✕</button>
+              <button @click="deleteClone(c.id)" class="text-rose-400 hover:text-rose-300 px-2 py-1">Delete</button>
             </div>
           </template>
+          <div x-show="clones.length===0" class="sm:col-span-2 text-xs text-slate-500 text-center py-10 border border-dashed border-slate-800 rounded-xl">
+            No saved voice clones yet.
+          </div>
         </div>
       </div>
     </section>
@@ -844,6 +892,26 @@
           const a = document.createElement('a');
           a.href = url;
           a.download = `transcript.${fmt}`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+        },
+        downloadHistoryText(item, fmt) {
+          let content = '';
+          let mime = 'text/plain;charset=utf-8';
+          if (fmt === 'txt') {
+            content = item.output_text || '';
+          } else {
+            mime = 'text/csv;charset=utf-8';
+            const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+            content = '\uFEFF' + ['id,engine,language,duration_sec,created_at,text', [item.id, esc(item.engine), esc(item.language), item.duration_sec, esc(item.created_at), esc(item.output_text)].join(',')].join('\n');
+          }
+          const blob = new Blob([content], { type: mime });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `transcript_${item.id}.${fmt}`;
           document.body.appendChild(a);
           a.click();
           a.remove();
