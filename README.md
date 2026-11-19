@@ -153,15 +153,90 @@ Untuk langsung menginstal OmniVoice & Qwen3-TTS saat build Docker, set `INSTALL_
 
 ## Dokumentasi API
 
-Dokumentasi lengkap seluruh endpoint OpenAI-compatible (`/v1/audio/speech`, `/v1/audio/transcriptions` dengan upload file maupun `file_url`), Voice Cloning, dan contoh **cURL, Python, JavaScript, PHP, dan Go** tersedia di **[docs/API.md](docs/API.md)** serta langsung di tab **⚡ API Docs** pada UI.
+LocalTTS menyediakan endpoint **OpenAI-compatible (`/v1/audio/*`)** serta **Async Job Queue (`/v1/jobs/*`)** dengan progress tracking (`0–100%`), nomor antrian, dan **Webhook**.
 
-Contoh cepat TTS Bahasa Indonesia:
+### Autentikasi API
+- Jika `API_KEY` di `.env` **kosong**: semua endpoint `/v1/*` terbuka tanpa header.
+- Jika `API_KEY` **diisi** (misal `API_KEY=apikey123`): kirim salah satu header berikut:
+  - `Authorization: Bearer apikey123`
+  - `X-API-Key: apikey123`
+
+### Daftar Endpoint Utama
+
+| Method | Endpoint | Keterangan |
+| :--- | :--- | :--- |
+| `GET` | `/v1/models` | Daftar engine yang siap dipakai (`kokoro`, `edge`, `omnivoice`, `qwen3`, `whisper`) |
+| `POST` | `/v1/audio/speech` | Text-to-Speech langsung (mengembalikan binary audio `mp3`/`wav`/`opus`/`flac`) |
+| `POST` | `/v1/audio/transcriptions` | Whisper STT langsung (upload `file` atau `file_url`, output `json`/`text`/`srt`/`verbose_json`) |
+| `POST` | `/v1/jobs/speech` | Async Queue TTS (mengembalikan `202` + `job_id` + `queue_position`, mendukung `webhook_url`) |
+| `POST` | `/v1/jobs/transcriptions` | Async Queue STT (`file` / `file_url` + opsional `webhook_url`) |
+| `GET` | `/v1/jobs/{job_id}` | Cek status (`queued`/`processing`/`completed`/`failed`), `progress`, `stage`, & `queue_position` |
+| `GET` | `/v1/jobs/{job_id}/result` | Ambil file audio TTS atau hasil transkrip STT setelah `status == "completed"` |
+| `GET` | `/health` | Healthcheck server (`{"status": "ok"}`, tanpa auth) |
+
+### Contoh Request & Response
+
+#### 1. Text-to-Speech (`POST /v1/audio/speech`)
 ```bash
 curl -X POST http://localhost:8000/v1/audio/speech \
   -H "Content-Type: application/json" \
-  -d '{"model":"edge","input":"Halo dari server TTS lokal!","voice":"id-ID-GadisNeural","language":"id"}' \
+  -H "Authorization: Bearer apikey123" \
+  -d '{"model":"edge","input":"Halo dari server LocalTTS!","voice":"id-ID-GadisNeural","language":"id","response_format":"mp3"}' \
   --output halo.mp3
 ```
+**Response (`200 OK`):** Binary audio (`Content-Type: audio/mpeg`) beserta header `X-Process-Seconds` dan `X-Audio-Duration`.
+
+#### 2. Whisper STT (`POST /v1/audio/transcriptions`)
+```bash
+# Upload file langsung (MP3/AAC/WAV/M4A) atau pakai file_url
+curl -X POST http://localhost:8000/v1/audio/transcriptions \
+  -H "Authorization: Bearer apikey123" \
+  -F "file=@audio.mp3" \
+  -F "model=base" \
+  -F "language=id" \
+  -F "response_format=verbose_json"
+```
+**Response (`200 OK`):**
+```json
+{
+  "text": "Halo dari server LocalTTS.",
+  "language": "id",
+  "duration": 2.4,
+  "segments": [{"id": 1, "start": 0.0, "end": 2.4, "text": "Halo dari server LocalTTS."}],
+  "process_sec": 0.62
+}
+```
+
+#### 3. Async Job Queue, Progress & Webhook (`POST /v1/jobs/speech`)
+```bash
+# 1. Enqueue job (webhook_url opsional, default pakai WEBHOOK_URL di .env)
+curl -X POST http://localhost:8000/v1/jobs/speech \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer apikey123" \
+  -d '{"model":"omnivoice","input":"Teks panjang...","voice":"id_female","language":"id","webhook_url":"https://webhook.site/id"}'
+```
+**Response (`202 Accepted`):**
+```json
+{
+  "job_id": "job_133614501c17",
+  "kind": "tts",
+  "status": "queued",
+  "progress": 0,
+  "queue_position": 1,
+  "status_url": "/v1/jobs/job_133614501c17",
+  "result_url": "/v1/jobs/job_133614501c17/result"
+}
+```
+Cek progress via `GET /v1/jobs/job_133614501c17`, dan ambil hasil akhir via `GET /v1/jobs/job_133614501c17/result`. Jika `webhook_url` / `WEBHOOK_URL` diisi, server otomatis mengirim `POST` JSON berisi `job_id`, `status`, `progress`, `result`, dan `error` saat selesai.
+
+### Kode Error Umum
+- `400 Bad Request`: Parameter tidak valid / model tidak dikenal / URL bukan `http`/`https`.
+- `401 Unauthorized`: `API_KEY` aktif di `.env` namun header `Authorization` / `X-API-Key` tidak valid atau kosong.
+- `404 Not Found`: `job_id` atau resource tidak ditemukan.
+- `413 Payload Too Large`: Teks melebihi `TTS_MAX_CHARS` atau file melebihi `STT_MAX_FILE_MB`.
+- `503 Service Unavailable`: Engine belum terinstall di server.
+
+Contoh lengkap untuk **Python, JavaScript/Node.js, PHP, dan Go** tersedia di **[docs/API.md](docs/API.md)** serta langsung di tab **⚡ API Docs** pada UI (bisa export ke `.md`, `.txt`, dan `.csv`).
 
 ---
 
