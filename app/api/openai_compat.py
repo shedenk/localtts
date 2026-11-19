@@ -48,6 +48,12 @@ async def create_speech(req: SpeechRequest):
     settings = get_settings()
     t0 = time.perf_counter()
 
+    if settings.tts_max_chars > 0 and len(req.input) > settings.tts_max_chars:
+        raise HTTPException(
+            status_code=413,
+            detail=f"Text exceeds TTS_MAX_CHARS limit ({len(req.input)} > {settings.tts_max_chars} chars).",
+        )
+
     try:
         engine = mgr.get_tts(req.model)
     except (KeyError, ValueError) as exc:
@@ -125,7 +131,7 @@ def _format_srt(segments: list[dict]) -> str:
     return "\n".join(lines)
 
 
-def _download_audio_url(url: str, max_bytes: int = 100 * 1024 * 1024) -> tuple[bytes, str]:
+def _download_audio_url(url: str, max_bytes: int = 0) -> tuple[bytes, str]:
     parsed = urlparse(url.strip())
     if parsed.scheme not in ("http", "https") or not parsed.netloc:
         raise HTTPException(status_code=400, detail="Invalid file_url. Must be http:// or https://.")
@@ -135,8 +141,9 @@ def _download_audio_url(url: str, max_bytes: int = 100 * 1024 * 1024) -> tuple[b
         chunks = bytearray()
         for chunk in resp.iter_bytes(chunk_size=65536):
             chunks.extend(chunk)
-            if len(chunks) > max_bytes:
-                raise HTTPException(status_code=413, detail="Remote file exceeds 100 MB limit.")
+            if max_bytes > 0 and len(chunks) > max_bytes:
+                limit_mb = max_bytes // (1024 * 1024)
+                raise HTTPException(status_code=413, detail=f"Remote file exceeds STT_MAX_FILE_MB limit ({limit_mb} MB).")
     return bytes(chunks), suffix
 
 
@@ -165,15 +172,22 @@ async def create_transcription(
     if (file is None or not file.filename) and not (file_url and file_url.strip()):
         raise HTTPException(status_code=400, detail="Provide either 'file' upload or 'file_url'.")
 
-    model_size = get_settings().whisper_default_model if model in ("whisper-1", "whisper", "") else model
+    settings = get_settings()
+    max_bytes = settings.stt_max_file_mb * 1024 * 1024 if settings.stt_max_file_mb > 0 else 0
+    model_size = settings.whisper_default_model if model in ("whisper-1", "whisper", "") else model
     if file is not None and file.filename:
         raw_bytes = await file.read()
+        if max_bytes > 0 and len(raw_bytes) > max_bytes:
+            raise HTTPException(
+                status_code=413,
+                detail=f"Uploaded file exceeds STT_MAX_FILE_MB limit ({settings.stt_max_file_mb} MB).",
+            )
         suffix = Path(file.filename).suffix or ".wav"
         source_label = file.filename
     else:
         assert file_url is not None
         try:
-            raw_bytes, suffix = await run_in_threadpool(_download_audio_url, file_url)
+            raw_bytes, suffix = await run_in_threadpool(_download_audio_url, file_url, max_bytes)
         except HTTPException:
             raise
         except Exception as exc:

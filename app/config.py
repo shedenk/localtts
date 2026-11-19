@@ -31,6 +31,10 @@ class Settings(BaseSettings):
     enabled_engines: str = "kokoro,edge,whisper,omnivoice,qwen3"
     idle_unload_seconds: int = 300
 
+    # Limits (0 = unlimited)
+    tts_max_chars: int = 5000
+    stt_max_file_mb: int = 50
+
     # Storage
     data_dir: str = "./data"
     models_dir: str = "./models"

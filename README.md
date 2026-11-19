@@ -142,6 +142,8 @@ Untuk VPS dengan RAM kecil (misal 1–2 GB), set `INSTALL_ALL_ENGINES=false` di 
 | `DEVICE` | `auto` | `auto` \| `cuda` \| `mps` \| `cpu` |
 | `ENABLED_ENGINES` | `kokoro,edge,whisper,omnivoice,qwen3` | Daftar engine yang diaktifkan |
 | `IDLE_UNLOAD_SECONDS` | `300` | Otomatis unload model dari RAM setelah idle (detik). `0` = nonaktif |
+| `TTS_MAX_CHARS` | `5000` | Batas maksimal karakter teks untuk TTS (`0` = tanpa batas) |
+| `STT_MAX_FILE_MB` | `50` | Batas maksimal ukuran file audio/video (MB) untuk transkrip STT (`0` = tanpa batas) |
 
 ---
 

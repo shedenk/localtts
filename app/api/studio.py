@@ -50,6 +50,8 @@ def system_status():
         "api_key": settings.api_key,
         "api_key_header": settings.api_key_header,
         "idle_unload_seconds": settings.idle_unload_seconds,
+        "tts_max_chars": settings.tts_max_chars,
+        "stt_max_file_mb": settings.stt_max_file_mb,
         "engines": mgr.list_all(),
     }
 
@@ -255,6 +257,11 @@ async def studio_tts_generate(
 
     mgr = get_manager()
     settings = get_settings()
+    if settings.tts_max_chars > 0 and len(text) > settings.tts_max_chars:
+        raise HTTPException(
+            status_code=413,
+            detail=f"Teks melebihi batas TTS_MAX_CHARS ({len(text)} > {settings.tts_max_chars} karakter).",
+        )
     t0 = time.perf_counter()
 
     try:
@@ -363,14 +370,22 @@ async def studio_stt_transcribe(
     if (file is None or not file.filename) and not (file_url and file_url.strip()):
         raise HTTPException(status_code=400, detail="Provide either a file upload or file_url.")
 
+    settings = get_settings()
+    max_bytes = settings.stt_max_file_mb * 1024 * 1024 if settings.stt_max_file_mb > 0 else 0
+
     if file is not None and file.filename:
         raw_bytes = await file.read()
+        if max_bytes > 0 and len(raw_bytes) > max_bytes:
+            raise HTTPException(
+                status_code=413,
+                detail=f"Ukuran file melebihi batas STT_MAX_FILE_MB ({settings.stt_max_file_mb} MB).",
+            )
         suffix = Path(file.filename).suffix or ".wav"
         source_label = file.filename
     else:
         assert file_url is not None
         try:
-            raw_bytes, suffix = await run_in_threadpool(_download_audio_url, file_url)
+            raw_bytes, suffix = await run_in_threadpool(_download_audio_url, file_url, max_bytes)
         except HTTPException:
             raise
         except Exception as exc:

@@ -202,7 +202,8 @@
           <div class="flex-1 flex flex-col">
             <div class="flex justify-between text-xs text-slate-400 mb-1">
               <span>Input Text</span>
-              <span x-text="tts.text.length + ' chars'"></span>
+              <span :class="(sys.tts_max_chars > 0 && tts.text.length > sys.tts_max_chars) ? 'text-rose-400 font-semibold' : ''"
+                x-text="sys.tts_max_chars > 0 ? `${tts.text.length} / ${sys.tts_max_chars} chars` : `${tts.text.length} chars`"></span>
             </div>
             <textarea x-model="tts.text" rows="10"
               class="w-full flex-1 bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm focus:outline-none focus:border-indigo-500"
@@ -315,8 +316,11 @@
           </select>
         </div>
         <div>
-          <label class="block text-xs text-slate-400 mb-1">Audio / Video File</label>
-          <input type="file" accept="audio/*,video/*" @change="stt.file = $event.target.files[0]"
+          <div class="flex justify-between text-xs text-slate-400 mb-1">
+            <span>Audio / Video File (MP3, AAC, WAV, M4A)</span>
+            <span x-show="sys.stt_max_file_mb > 0" x-text="`Max: ${sys.stt_max_file_mb} MB`"></span>
+          </div>
+          <input type="file" accept="audio/*,video/*,.aac,.mp3,.wav,.m4a,.ogg" @change="stt.file = $event.target.files[0]"
             class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-slate-800 file:text-slate-200" />
         </div>
         <div>
