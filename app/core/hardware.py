@@ -66,6 +66,28 @@ def get_hardware_info() -> dict[str, Any]:
     elif device == "mps":
         gpu_name = f"Apple Silicon ({platform.machine()})"
 
+    settings = get_settings()
+    try:
+        disk = psutil.disk_usage(str(settings.data_path))
+        disk_total_gb = round(disk.total / (1024**3), 2)
+        disk_used_gb = round(disk.used / (1024**3), 2)
+        disk_free_gb = round(disk.free / (1024**3), 2)
+        disk_percent = disk.percent
+    except Exception:
+        disk_total_gb = disk_used_gb = disk_free_gb = disk_percent = 0.0
+
+    def _dir_size_mb(path) -> float:
+        if not path.exists():
+            return 0.0
+        tot = 0
+        try:
+            for p in path.rglob("*"):
+                if p.is_file():
+                    tot += p.stat().st_size
+        except Exception:
+            pass
+        return round(tot / (1024 * 1024), 2)
+
     return {
         "os": platform.system(),
         "arch": platform.machine(),
@@ -79,4 +101,16 @@ def get_hardware_info() -> dict[str, Any]:
         "ram_available_gb": round(vm.available / (1024**3), 2),
         "ram_percent": vm.percent,
         "ffmpeg_available": shutil.which("ffmpeg") is not None,
+        # Storage & Disk Usage
+        "disk_total_gb": disk_total_gb,
+        "disk_used_gb": disk_used_gb,
+        "disk_free_gb": disk_free_gb,
+        "disk_percent": disk_percent,
+        "outputs_size_mb": _dir_size_mb(settings.outputs_path),
+        "models_size_mb": _dir_size_mb(settings.models_path),
+        # Retention Settings from .env
+        "auto_clean_disk_percent": settings.auto_clean_disk_percent,
+        "auto_clean_retention_days": settings.auto_clean_retention_days,
+        "log_retention_days": settings.log_retention_days,
+        "log_max_mb": settings.log_max_mb,
     }

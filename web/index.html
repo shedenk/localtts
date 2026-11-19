@@ -64,7 +64,7 @@
         class="px-4 py-2.5 text-sm font-medium border-b-2 transition whitespace-nowrap">🎭 Voice Clones</button>
       <button @click="tab='api'; loadSystem()" :class="tab==='api' ? 'border-indigo-500 text-white' : 'border-transparent text-slate-400 hover:text-slate-200'"
         class="px-4 py-2.5 text-sm font-medium border-b-2 transition whitespace-nowrap">⚡ API Docs</button>
-      <button @click="tab='system'; loadSystem(); loadReadme()" :class="tab==='system' ? 'border-indigo-500 text-white' : 'border-transparent text-slate-400 hover:text-slate-200'"
+      <button @click="tab='system'; loadSystem(); loadReadme(); loadLogs()" :class="tab==='system' ? 'border-indigo-500 text-white' : 'border-transparent text-slate-400 hover:text-slate-200'"
         class="px-4 py-2.5 text-sm font-medium border-b-2 transition whitespace-nowrap">🖥️ System & Credits</button>
     </div>
   </header>
@@ -862,6 +862,103 @@
         </div>
       </div>
 
+      <!-- Storage & Auto-Cleanup Card -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
+          <div class="flex items-center gap-2.5">
+            <span class="text-lg">💾</span>
+            <div>
+              <h2 class="text-sm font-semibold text-slate-100">Storage & Auto-Clean Policy</h2>
+              <p class="text-xs text-slate-400">Kapasitas disk penyimpanan lokal, ruang tersisa, dan aturan pembersihan otomatis dari file .env.</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <button @click="cleanStorage()" type="button"
+              class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs font-medium text-white transition flex items-center gap-1.5 shadow-sm">
+              <span>🧹</span>
+              <span>Bersihkan Sekarang</span>
+            </button>
+            <button @click="loadSystem()" type="button"
+              class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-300 transition">
+              🔄 Refresh
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 text-xs">
+          <!-- Total Storage -->
+          <div class="bg-slate-950/70 border border-slate-800/80 rounded-xl p-3.5 space-y-1">
+            <div class="text-slate-400 flex items-center justify-between">
+              <span>Total Storage</span>
+              <span class="text-slate-500">💽</span>
+            </div>
+            <div class="text-lg font-mono font-bold text-slate-100" x-text="`${sys.hardware?.disk_total_gb || 0} GB`"></div>
+            <div class="text-[11px] text-slate-500">Kapasitas partisi data</div>
+          </div>
+
+          <!-- Terpakai -->
+          <div class="bg-slate-950/70 border border-slate-800/80 rounded-xl p-3.5 space-y-1">
+            <div class="text-slate-400 flex items-center justify-between">
+              <span>Storage Terpakai</span>
+              <span class="text-slate-500 font-mono" x-text="`${sys.hardware?.disk_percent || 0}%`"></span>
+            </div>
+            <div class="text-lg font-mono font-bold text-amber-300" x-text="`${sys.hardware?.disk_used_gb || 0} GB`"></div>
+            <div class="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden mt-1">
+              <div class="h-full rounded-full transition-all duration-500"
+                :class="(sys.hardware?.disk_percent || 0) >= (sys.hardware?.auto_clean_disk_percent || 75) ? 'bg-rose-500' : 'bg-indigo-500'"
+                :style="`width: ${Math.min(sys.hardware?.disk_percent || 0, 100)}%`"></div>
+            </div>
+          </div>
+
+          <!-- Tersisa -->
+          <div class="bg-slate-950/70 border border-slate-800/80 rounded-xl p-3.5 space-y-1">
+            <div class="text-slate-400 flex items-center justify-between">
+              <span>Storage Tersisa (Free)</span>
+              <span class="text-emerald-400">✓</span>
+            </div>
+            <div class="text-lg font-mono font-bold text-emerald-300" x-text="`${sys.hardware?.disk_free_gb || 0} GB`"></div>
+            <div class="text-[11px] text-slate-500" x-text="`Sisa ${Math.max(0, 100 - (sys.hardware?.disk_percent || 0)).toFixed(1)}% kapasitas`"></div>
+          </div>
+
+          <!-- Folder Directory Sizes -->
+          <div class="bg-slate-950/70 border border-slate-800/80 rounded-xl p-3.5 space-y-1">
+            <div class="text-slate-400 flex items-center justify-between">
+              <span>LocalTTS Folders</span>
+              <span class="text-slate-500">📁</span>
+            </div>
+            <div class="text-xs font-mono text-slate-200 mt-1 space-y-0.5">
+              <div class="flex justify-between">
+                <span class="text-slate-400">Audio Outputs:</span>
+                <span class="text-indigo-300 font-semibold" x-text="`${sys.hardware?.outputs_size_mb || 0} MB`"></span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-slate-400">Cached Models:</span>
+                <span class="text-indigo-300 font-semibold" x-text="`${sys.hardware?.models_size_mb || 0} MB`"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Rules & Policies from ENV -->
+        <div class="bg-slate-950 border border-slate-800/80 rounded-xl p-3.5 flex flex-wrap items-center gap-3 text-xs">
+          <div class="text-slate-400 font-medium">Kebijakan Otomatis (.env):</div>
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-slate-300" title="AUTO_CLEAN_DISK_PERCENT">
+              <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+              <span>Ambang Auto-Clean Disk: <strong class="text-amber-300 font-mono" x-text="`${sys.hardware?.auto_clean_disk_percent || 75}%`">75%</strong></span>
+            </span>
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-slate-300" title="AUTO_CLEAN_RETENTION_DAYS">
+              <span class="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
+              <span>Retensi File Audio Lama: <strong class="text-indigo-300 font-mono" x-text="`> ${sys.hardware?.auto_clean_retention_days || 30} hari`">> 30 hari</strong></span>
+            </span>
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-slate-300" title="LOG_RETENTION_DAYS & LOG_MAX_MB">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+              <span>Retensi Log Sistem: <strong class="text-emerald-300 font-mono" x-text="`> ${sys.hardware?.log_retention_days || 3} hari`">> 3 hari</strong> (max <span class="text-emerald-300 font-mono" x-text="`${sys.hardware?.log_max_mb || 10} MB`">10 MB</span>)</span>
+            </span>
+          </div>
+        </div>
+      </div>
+
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <template x-for="eng in (sys.engines || [])" :key="eng.name">
           <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-2.5">
@@ -893,6 +990,67 @@
           </div>
         </template>
       </div>
+
+      <!-- System Logs Viewer -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div class="flex items-center gap-2.5">
+            <span class="text-lg">📋</span>
+            <div>
+              <h2 class="text-sm font-semibold text-slate-100">System Logs & Activity</h2>
+              <p class="text-xs text-slate-400">Log runtime sistem terintegrasi (otomatis dirotasi jika &gt; <span x-text="`${sys.hardware?.log_max_mb || 10} MB`">10 MB</span> atau berumur &gt; <span x-text="`${sys.hardware?.log_retention_days || 3} hari`">3 hari</span>).</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <!-- Filter Level -->
+            <div class="flex items-center bg-slate-950 border border-slate-800 rounded-lg p-0.5 text-xs">
+              <button type="button" @click="logLevel='ALL'; loadLogs()"
+                class="px-2.5 py-1 rounded-md transition text-xs"
+                :class="logLevel==='ALL' ? 'bg-indigo-600 text-white font-medium' : 'text-slate-400 hover:text-slate-200'">ALL</button>
+              <button type="button" @click="logLevel='INFO'; loadLogs()"
+                class="px-2.5 py-1 rounded-md transition text-xs"
+                :class="logLevel==='INFO' ? 'bg-indigo-600 text-white font-medium' : 'text-slate-400 hover:text-slate-200'">INFO</button>
+              <button type="button" @click="logLevel='WARNING'; loadLogs()"
+                class="px-2.5 py-1 rounded-md transition text-xs"
+                :class="logLevel==='WARNING' ? 'bg-amber-600 text-white font-medium' : 'text-slate-400 hover:text-slate-200'">WARN</button>
+              <button type="button" @click="logLevel='ERROR'; loadLogs()"
+                class="px-2.5 py-1 rounded-md transition text-xs"
+                :class="logLevel==='ERROR' ? 'bg-rose-600 text-white font-medium' : 'text-slate-400 hover:text-slate-200'">ERROR</button>
+            </div>
+
+            <!-- Refresh & Clear -->
+            <button type="button" @click="loadLogs()"
+              class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 flex items-center gap-1 transition">
+              <span>🔄</span>
+              <span x-show="!logsLoading">Refresh</span>
+              <span x-show="logsLoading">Memuat...</span>
+            </button>
+            <button type="button" @click="clearSystemLogs()"
+              class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-rose-900/60 text-xs text-rose-300 hover:text-rose-200 flex items-center gap-1 transition">
+              <span>🗑️</span>
+              <span>Clear</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Log Terminal Window -->
+        <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 font-mono text-xs max-h-72 overflow-y-auto space-y-1">
+          <template x-if="logs.length === 0">
+            <div class="text-slate-500 py-6 text-center italic">Belum ada baris log untuk filter ini.</div>
+          </template>
+          <template x-for="(l, idx) in logs" :key="idx">
+            <div class="flex items-start gap-2 py-0.5 hover:bg-slate-900/60 rounded px-1 transition-colors">
+              <span class="text-slate-500 shrink-0 select-none text-[11px]" x-text="l.timestamp ? l.timestamp.substring(11, 19) : '--:--:--'"></span>
+              <span class="text-[10px] font-semibold px-1.5 py-0.2 rounded shrink-0 uppercase"
+                :class="l.level === 'ERROR' ? 'bg-rose-950 text-rose-400 border border-rose-800/50' : (l.level === 'WARNING' ? 'bg-amber-950 text-amber-400 border border-amber-800/50' : 'bg-emerald-950 text-emerald-400 border border-emerald-800/50')"
+                x-text="l.level"></span>
+              <span class="text-indigo-400/80 shrink-0 text-[11px]" x-text="`[${l.source || 'sys'}]`"></span>
+              <span class="text-slate-200 break-all select-text flex-1" x-text="l.message"></span>
+            </div>
+          </template>
+        </div>
+      </div>
+
       <!-- Credits & Open-Source Sources -->
       <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
         <div>
@@ -1067,12 +1225,16 @@
           result: null,
         },
         newClone: { name: '', ref_text: '', file: null },
+        logs: [],
+        logLevel: 'ALL',
+        logsLoading: false,
 
         async init() {
           await this.loadSystem();
           await this.loadClones();
           await this.loadHistory('tts');
           this.loadReadme();
+          this.loadLogs();
           this.onEngineChange();
           this.initPolling();
         },
@@ -1080,6 +1242,8 @@
           setInterval(async () => {
             if (this.tab === 'tts' || this.tab === 'stt') {
               await this.loadHistory(this.tab, false);
+            } else if (this.tab === 'system') {
+              await this.loadLogs();
             }
           }, 3000);
         },
@@ -1106,6 +1270,58 @@
           this.readmeHtml = (window.marked && window.marked.parse)
             ? window.marked.parse(this.readmeRaw)
             : `<pre>${this.readmeRaw}</pre>`;
+        },
+        async loadLogs() {
+          this.logsLoading = true;
+          try {
+            const levelParam = this.logLevel !== 'ALL' ? `?level=${this.logLevel}` : '';
+            const res = await fetch(`/api/system/logs${levelParam}`);
+            if (res.ok) {
+              const data = await res.json();
+              this.logs = data.logs || [];
+            }
+          } catch (e) {
+            console.error('Failed to load logs', e);
+          } finally {
+            this.logsLoading = false;
+          }
+        },
+        async clearSystemLogs() {
+          this.confirm(
+            'Hapus System Logs',
+            'Apakah Anda yakin ingin mengosongkan log sistem dari memori dan file?',
+            async () => {
+              const res = await fetch('/api/system/logs/clear', { method: 'POST' });
+              if (res.ok) {
+                this.logs = [];
+                this.notify('System logs berhasil dikosongkan.');
+              } else {
+                this.notify('Gagal mengosongkan logs.', 'error');
+              }
+            }
+          );
+        },
+        async cleanStorage() {
+          this.confirm(
+            'Bersihkan Storage & Log Sekarang',
+            'Pembersihan akan memeriksa batas kapasitas disk, menghapus file audio output lama (> retention days), serta log lama. Lanjutkan?',
+            async () => {
+              this.notify('Menjalankan pembersihan storage...');
+              try {
+                const res = await fetch('/api/system/clean', { method: 'POST' });
+                const data = await res.json();
+                if (res.ok) {
+                  this.notify(`Selesai: ${data.cleaned_files} file audio dihapus (${data.freed_mb} MB dibebaskan), ${data.cleaned_logs} log database dipangkas.`);
+                  await this.loadSystem();
+                  await this.loadLogs();
+                } else {
+                  this.notify(data.detail || 'Gagal membersihkan storage', 'error');
+                }
+              } catch (e) {
+                this.notify('Error saat menjalankan pembersihan', 'error');
+              }
+            }
+          );
         },
         ttsEngines() {
           return (this.sys.engines || []).filter(e => e.kind === 'tts');

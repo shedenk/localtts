@@ -15,6 +15,7 @@ from fastapi.concurrency import run_in_threadpool
 from app.api.openai_compat import _download_audio_url, _format_srt
 from app.config import get_settings
 from app.core.audio_utils import encode_audio, save_audio_file
+from app.core.logger import log_error, log_info
 from app.core.manager import get_manager
 from app.db import add_generation, get_job, log_api_call, update_job
 
@@ -103,6 +104,7 @@ async def _process_tts_job(task: dict[str, Any]) -> None:
         generation_id=gen_id,
         result_json=json.dumps(result_data),
     )
+    log_info("JOB", f"TTS job completed: {job_id} (gen_id={gen_id}, {round(elapsed, 2)}s)")
 
 
 async def _process_stt_job(task: dict[str, Any]) -> None:
@@ -174,6 +176,7 @@ async def _process_stt_job(task: dict[str, Any]) -> None:
         generation_id=gen_id,
         result_json=json.dumps(result_data),
     )
+    log_info("JOB", f"TTS job completed: {job_id} (gen_id={gen_id}, {round(elapsed, 2)}s)")
 
 
 async def job_worker_loop(stop_event: asyncio.Event) -> None:
@@ -192,6 +195,7 @@ async def job_worker_loop(stop_event: asyncio.Event) -> None:
             else:
                 await _process_stt_job(task)
         except Exception as exc:
+            log_error("JOB", f"Job failed: {job_id} -> {exc}")
             update_job(job_id, status="failed", progress=100, stage="error", error=str(exc))
             if task.get("tmp_path") and os.path.exists(task["tmp_path"]):
                 os.remove(task["tmp_path"])

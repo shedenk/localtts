@@ -15,7 +15,9 @@ from app.api.ui_auth import router as auth_router
 from app.auth import is_ui_authenticated
 from app.config import get_settings
 from app.core.job_worker import job_worker_loop
+from app.core.logger import log_info
 from app.core.manager import get_manager, idle_cleanup_loop
+from app.core.storage_cleaner import storage_cleaner_loop
 from app.db import cleanup_stale_jobs_on_startup, init_db
 
 WEB_DIR = Path(__file__).resolve().parent.parent / "web"
@@ -27,22 +29,26 @@ async def lifespan(app: FastAPI):
     init_db()
     cleanup_stale_jobs_on_startup()
     get_manager()
+    log_info("SYSTEM", "LocalTTS application started successfully.")
 
     stop_event = asyncio.Event()
     cleanup_task = asyncio.create_task(idle_cleanup_loop(stop_event))
     worker_task = asyncio.create_task(job_worker_loop(stop_event))
+    storage_task = asyncio.create_task(storage_cleaner_loop(stop_event))
     try:
         yield
     finally:
         stop_event.set()
         cleanup_task.cancel()
         worker_task.cancel()
-        for t in (cleanup_task, worker_task):
+        storage_task.cancel()
+        for t in (cleanup_task, worker_task, storage_task):
             try:
                 await t
             except asyncio.CancelledError:
                 pass
         get_manager().unload_all()
+        log_info("SYSTEM", "LocalTTS application shut down.")
 
 
 app = FastAPI(

@@ -68,7 +68,7 @@ Berikut adalah tampilan antarmuka web LocalTTS yang modern, responsif, dan diran
 ---
 
 ### 5. 🖥️ System & Hardware Monitor
-> Pantau penggunaan CPU, RAM, GPU (`CUDA` / `Apple MPS`), kelola pemuatan model ke RAM secara manual atau otomatis, tombol instalasi engine tambahan, serta penampil dokumen `README.md`.
+> Pantau penggunaan CPU, RAM, GPU (`CUDA` / `Apple MPS`), status kapasitas partisi disk (Total, Digunakan, Tersisa), live console System Logs, kebijakan auto-cleaning file audio lama & rotasi log, kelola pemuatan model ke RAM secara manual atau otomatis, tombol instalasi engine tambahan, serta penampil dokumen `README.md`.
 
 ![System Info](docs/screenshots/05_system_info.png)
 
@@ -219,6 +219,10 @@ docker compose up -d --build
 | `STT_MAX_FILE_MB` | `50` | Batas ukuran file audio/video STT dalam MB (`0` = tanpa batas) |
 | `WEBHOOK_URL` | *(kosong)* | Default URL webhook saat async job selesai |
 | `ALLOW_LOCAL_URLS` | `true` | Izinkan alamat lokal `127.0.0.1` pada webhook & URL audio |
+| `AUTO_CLEAN_DISK_PERCENT` | `75` | Ambang batas penggunaan disk (%) untuk memicu auto-clean berkala |
+| `AUTO_CLEAN_RETENTION_DAYS` | `30` | Hapus file audio output lama yang berumur > N hari |
+| `LOG_RETENTION_DAYS` | `3` | Retensi log sistem (hari) sebelum otomatis dibersihkan |
+| `LOG_MAX_MB` | `10` | Batas maksimal ukuran file log dalam MB sebelum dirotasi |
 
 ---
 

@@ -44,6 +44,12 @@ class Settings(BaseSettings):
     data_dir: str = "./data"
     models_dir: str = "./models"
 
+    # Storage Auto-Clean & Retention (.env)
+    auto_clean_disk_percent: int = 75       # Ambang batas disk usage (%) sebelum auto-clean (default 75%)
+    auto_clean_retention_days: int = 30     # Hapus file audio output lebih dari X hari (default 30 hari)
+    log_retention_days: int = 3             # Hapus/rotasi log sistem lebih dari X hari (default 3 hari)
+    log_max_mb: int = 10                    # Maksimum ukuran file log dalam MB sebelum dirotasi (default 10 MB)
+
     # Model IDs
     whisper_default_model: str = "base"
     qwen3_model_id: str = "Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice"
@@ -84,6 +90,10 @@ class Settings(BaseSettings):
     @property
     def db_path(self) -> Path:
         return self.data_path / "tts_local.db"
+
+    @property
+    def log_path(self) -> Path:
+        return self.data_path / "localtts.log"
 
     def ensure_dirs(self) -> None:
         self.data_path.mkdir(parents=True, exist_ok=True)

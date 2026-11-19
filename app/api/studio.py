@@ -19,7 +19,9 @@ from app.auth import require_ui_auth
 from app.config import get_settings
 from app.core.audio_utils import MIME_TYPES, encode_audio, save_audio_file
 from app.core.hardware import get_hardware_info
+from app.core.logger import clear_logs, get_recent_logs, log_info, log_warning
 from app.core.manager import get_manager
+from app.core.storage_cleaner import run_storage_cleanup
 from app.db import (
     add_generation,
     add_voice_clone,
@@ -56,6 +58,26 @@ def system_status():
         "stt_max_file_mb": settings.stt_max_file_mb,
         "engines": mgr.list_all(),
     }
+
+
+@router.get("/system/logs")
+def system_logs(limit: int = 150, level: Optional[str] = None):
+    return {
+        "logs": get_recent_logs(limit=limit, level=level),
+    }
+
+
+@router.post("/system/logs/clear")
+def system_logs_clear():
+    ok = clear_logs()
+    log_info("SYSTEM", "Logs cleared by user via Studio UI.")
+    return {"ok": ok}
+
+
+@router.post("/system/clean")
+def system_clean_trigger():
+    result = run_storage_cleanup()
+    return result
 
 
 @router.get("/engines")
@@ -345,6 +367,7 @@ async def studio_tts_generate(
         status="completed",
         progress=100,
     )
+    log_info("TTS", f"Generated audio id={gen_id} via {tts.name} ({actual_fmt}, {round(duration, 2)}s, process {round(elapsed, 2)}s)")
 
     return {
         "id": gen_id,
@@ -435,6 +458,7 @@ async def studio_stt_transcribe(
         status="completed",
         progress=100,
     )
+    log_info("TTS", f"Generated audio id={gen_id} via {tts.name} ({actual_fmt}, {round(duration, 2)}s, process {round(elapsed, 2)}s)")
 
     return {
         "id": gen_id,
