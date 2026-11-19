@@ -261,6 +261,7 @@
                     x-text="`· ${item.duration_sec}s (gen ${item.process_sec}s, RTF ${item.rtf}x)`"></span>
                 </div>
                 <div class="flex items-center gap-2">
+                  <button @click="viewTranscript(item)" class="px-2.5 py-1 rounded-md bg-indigo-600/80 hover:bg-indigo-500 text-white">👁 Lihat</button>
                   <template x-if="item.audio_filename">
                     <a :href="`/api/history/${item.id}/audio`" :download="item.audio_filename"
                       class="px-2.5 py-1 rounded-md bg-slate-800 hover:bg-indigo-600 text-slate-200 transition">
@@ -682,7 +683,7 @@
     </div>
   </div>
 
-  <!-- View Transcript Modal -->
+  <!-- View Text / Transcript Modal -->
   <div x-show="viewModal.open" x-transition.opacity
     class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
     style="display: none;">
@@ -690,22 +691,34 @@
       class="w-full max-w-2xl bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4 shadow-2xl">
       <div class="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h3 class="text-sm font-semibold text-slate-100">Detail Transkrip</h3>
+          <h3 class="text-sm font-semibold text-slate-100"
+            x-text="viewModal.item?.kind === 'tts' ? 'Detail Teks TTS' : 'Detail Transkrip STT'"></h3>
           <p class="text-xs text-slate-400 mt-0.5"
-            x-text="viewModal.item ? `${viewModal.item.input_text || 'audio'} · ${viewModal.item.model || 'whisper'} · ${viewModal.item.language || '-'} · ${viewModal.item.duration_sec || 0}s` : ''"></p>
+            x-text="viewModal.item ? (viewModal.item.kind === 'tts' ? `${viewModal.item.engine} · ${viewModal.item.voice || '-'} · ${viewModal.item.language || '-'} · ${viewModal.item.duration_sec || 0}s` : `${viewModal.item.input_text || 'audio'} · ${viewModal.item.model || 'whisper'} · ${viewModal.item.language || '-'} · ${viewModal.item.duration_sec || 0}s`) : ''"></p>
         </div>
         <button type="button" @click="viewModal.open = false" class="text-slate-400 hover:text-slate-200 text-sm">✕</button>
       </div>
-      <textarea readonly rows="10" :value="viewModal.item?.output_text || ''"
+      <textarea readonly rows="10" :value="(viewModal.item?.kind === 'tts' ? viewModal.item?.input_text : viewModal.item?.output_text) || ''"
         class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm text-slate-200 focus:outline-none"></textarea>
+      <template x-if="viewModal.item?.kind === 'tts' && viewModal.item?.audio_filename">
+        <audio controls :src="`/api/history/${viewModal.item.id}/audio`" class="w-full h-9"></audio>
+      </template>
       <div class="flex flex-wrap items-center justify-between gap-2">
         <div class="flex gap-2 text-xs">
-          <button type="button" @click="copyText(viewModal.item?.output_text || '')"
+          <button type="button" @click="copyText((viewModal.item?.kind === 'tts' ? viewModal.item?.input_text : viewModal.item?.output_text) || '')"
             class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200">Copy Text</button>
-          <button type="button" @click="downloadHistoryText(viewModal.item, 'txt')"
-            class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-teal-600 text-slate-200">⬇ TXT</button>
-          <button type="button" @click="downloadHistoryText(viewModal.item, 'csv')"
-            class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-teal-600 text-slate-200">⬇ CSV</button>
+          <template x-if="viewModal.item?.kind === 'tts' && viewModal.item?.audio_filename">
+            <a :href="`/api/history/${viewModal.item.id}/audio`" :download="viewModal.item.audio_filename"
+              class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-indigo-600 text-slate-200">⬇ Download Audio</a>
+          </template>
+          <template x-if="viewModal.item?.kind === 'stt'">
+            <div class="flex gap-2">
+              <button type="button" @click="downloadHistoryText(viewModal.item, 'txt')"
+                class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-teal-600 text-slate-200">⬇ TXT</button>
+              <button type="button" @click="downloadHistoryText(viewModal.item, 'csv')"
+                class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-teal-600 text-slate-200">⬇ CSV</button>
+            </div>
+          </template>
         </div>
         <button type="button" @click="viewModal.open = false"
           class="px-4 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs font-medium text-white">Tutup</button>
