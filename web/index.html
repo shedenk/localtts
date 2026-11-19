@@ -518,7 +518,7 @@
               Base URL: <code class="text-indigo-300 font-mono" x-text="location.origin"></code> ·
               Auth: <strong class="text-slate-200" x-text="sys.api_auth_enabled ? `Protected (${sys.api_key_header} / Bearer)` : 'Open (API_KEY di .env kosong)'"></strong>
             </p>
-            <p class="text-sm text-amber-300/95 pt-1">
+            <p class="text-xs text-amber-300/95 pt-1">
               <span x-show="sys.api_auth_enabled">
                 API Key aktif: <code class="bg-slate-950 px-2 py-0.5 rounded font-mono text-amber-200 font-semibold" x-text="sys.api_key"></code> —
               </span>
