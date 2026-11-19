@@ -56,7 +56,26 @@ curl -X POST http://localhost:8000/v1/audio/speech \
   --output hasil.mp3
 ```
 
-**Contoh Python (OpenAI SDK):**
+**Contoh Python (`requests` & OpenAI SDK):**
+```python
+import requests
+
+res = requests.post(
+    "http://localhost:8000/v1/audio/speech",
+    headers={"Authorization": "Bearer YOUR_API_KEY"},
+    json={
+        "model": "edge",
+        "input": "Halo dari LocalTTS!",
+        "voice": "id-ID-GadisNeural",
+        "language": "id",
+        "response_format": "mp3",
+    },
+)
+res.raise_for_status()
+with open("hasil.mp3", "wb") as f:
+    f.write(res.content)
+```
+
 ```python
 from openai import OpenAI
 
@@ -71,6 +90,78 @@ with client.audio.speech.with_streaming_response.create(
     input="Hello! This is running on my local TTS server.",
 ) as response:
     response.stream_to_file("output.mp3")
+```
+
+**Contoh JavaScript / Node.js (`fetch`):**
+```javascript
+import fs from "node:fs";
+
+const res = await fetch("http://localhost:8000/v1/audio/speech", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "Authorization": "Bearer YOUR_API_KEY",
+  },
+  body: JSON.stringify({
+    model: "edge",
+    input: "Halo dari LocalTTS!",
+    voice: "id-ID-GadisNeural",
+    language: "id",
+    response_format: "mp3",
+  }),
+});
+const buf = Buffer.from(await res.arrayBuffer());
+fs.writeFileSync("hasil.mp3", buf);
+```
+
+**Contoh PHP (cURL):**
+```php
+<?php
+$ch = curl_init("http://localhost:8000/v1/audio/speech");
+curl_setopt_array($ch, [
+    CURLOPT_POST => true,
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_HTTPHEADER => [
+        "Content-Type: application/json",
+        "Authorization: Bearer YOUR_API_KEY",
+    ],
+    CURLOPT_POSTFIELDS => json_encode([
+        "model" => "edge",
+        "input" => "Halo dari LocalTTS!",
+        "voice" => "id-ID-GadisNeural",
+        "language" => "id",
+        "response_format" => "mp3",
+    ]),
+]);
+$audio = curl_exec($ch);
+curl_close($ch);
+file_put_contents("hasil.mp3", $audio);
+```
+
+**Contoh Go (`net/http`):**
+```go
+package main
+
+import (
+	"bytes"
+	"io"
+	"net/http"
+	"os"
+)
+
+func main() {
+	body := []byte(`{"model":"edge","input":"Halo dari LocalTTS!","voice":"id-ID-GadisNeural","language":"id"}`)
+	req, _ := http.NewRequest("POST", "http://localhost:8000/v1/audio/speech", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer YOUR_API_KEY")
+
+	resp, _ := http.DefaultClient.Do(req)
+	defer resp.Body.Close()
+
+	out, _ := os.Create("hasil.mp3")
+	defer out.Close()
+	io.Copy(out, resp.Body)
+}
 ```
 
 ---
@@ -94,6 +185,55 @@ curl -X POST http://localhost:8000/v1/audio/transcriptions \
   -F model=base \
   -F language=id \
   -F response_format=verbose_json
+```
+
+**Contoh Python (`requests`):**
+```python
+import requests
+
+with open("rekaman.mp3", "rb") as f:
+    res = requests.post(
+        "http://localhost:8000/v1/audio/transcriptions",
+        headers={"Authorization": "Bearer YOUR_API_KEY"},
+        files={"file": f},
+        data={"model": "base", "language": "id"},
+    )
+print(res.json())
+```
+
+**Contoh JavaScript / Node.js (`fetch`):**
+```javascript
+import fs from "node:fs";
+
+const form = new FormData();
+form.append("file", new Blob([fs.readFileSync("rekaman.mp3")]), "rekaman.mp3");
+form.append("model", "base");
+form.append("language", "id");
+
+const res = await fetch("http://localhost:8000/v1/audio/transcriptions", {
+  method: "POST",
+  headers: { "Authorization": "Bearer YOUR_API_KEY" },
+  body: form,
+});
+console.log(await res.json());
+```
+
+**Contoh PHP (cURL):**
+```php
+<?php
+$ch = curl_init("http://localhost:8000/v1/audio/transcriptions");
+curl_setopt_array($ch, [
+    CURLOPT_POST => true,
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_HTTPHEADER => ["Authorization: Bearer YOUR_API_KEY"],
+    CURLOPT_POSTFIELDS => [
+        "file" => new CURLFile("rekaman.mp3"),
+        "model" => "base",
+        "language" => "id",
+    ],
+]);
+echo curl_exec($ch);
+curl_close($ch);
 ```
 
 ---

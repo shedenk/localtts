@@ -49,7 +49,9 @@
       <button @click="tab='history'; loadHistory(); loadClones()" :class="tab==='history' ? 'border-indigo-500 text-white' : 'border-transparent text-slate-400 hover:text-slate-200'"
         class="px-4 py-2.5 text-sm font-medium border-b-2 transition whitespace-nowrap">🗂️ History & Clones</button>
       <button @click="tab='api'; loadSystem()" :class="tab==='api' ? 'border-indigo-500 text-white' : 'border-transparent text-slate-400 hover:text-slate-200'"
-        class="px-4 py-2.5 text-sm font-medium border-b-2 transition whitespace-nowrap">⚡ API & System</button>
+        class="px-4 py-2.5 text-sm font-medium border-b-2 transition whitespace-nowrap">⚡ API Docs</button>
+      <button @click="tab='system'; loadSystem()" :class="tab==='system' ? 'border-indigo-500 text-white' : 'border-transparent text-slate-400 hover:text-slate-200'"
+        class="px-4 py-2.5 text-sm font-medium border-b-2 transition whitespace-nowrap">🖥️ System & Credits</button>
     </div>
   </header>
 
@@ -375,8 +377,102 @@
       </div>
     </section>
 
-    <!-- TAB 4: API & SYSTEM -->
+    <!-- TAB 4: API DOCS -->
     <section x-show="tab==='api'" class="space-y-6">
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 class="text-sm font-semibold">OpenAI-Compatible API Documentation</h2>
+            <p class="text-xs text-slate-400 mt-0.5">
+              Base URL: <code class="text-indigo-300 font-mono" x-text="location.origin"></code> ·
+              Auth: <strong class="text-slate-200" x-text="sys.api_auth_enabled ? `Protected (Authorization: Bearer <API_KEY> atau ${sys.api_key_header}: <API_KEY>)` : 'Open (API_KEY di .env kosong)'"></strong>
+            </p>
+          </div>
+          <div class="flex flex-wrap gap-1 text-xs">
+            <template x-for="lang in ['curl', 'python', 'javascript', 'php', 'go']" :key="lang">
+              <button @click="apiLang = lang"
+                :class="apiLang === lang ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'"
+                class="px-3 py-1.5 rounded-lg font-medium uppercase transition" x-text="lang"></button>
+            </template>
+          </div>
+        </div>
+
+        <!-- Endpoint Summary -->
+        <div class="overflow-x-auto">
+          <table class="w-full text-xs text-left border-collapse">
+            <thead>
+              <tr class="border-b border-slate-800 text-slate-400">
+                <th class="py-2 pr-3">Method</th>
+                <th class="py-2 pr-3">Endpoint</th>
+                <th class="py-2">Keterangan & Parameter Utama</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-800/70 text-slate-300">
+              <tr>
+                <td class="py-2 pr-3 font-mono text-emerald-400">GET</td>
+                <td class="py-2 pr-3 font-mono">/v1/models</td>
+                <td class="py-2">Daftar engine yang siap dipakai (<code>kokoro</code>, <code>edge</code>, <code>omnivoice</code>, <code>qwen3</code>, <code>whisper</code>).</td>
+              </tr>
+              <tr>
+                <td class="py-2 pr-3 font-mono text-indigo-400">POST</td>
+                <td class="py-2 pr-3 font-mono">/v1/audio/speech</td>
+                <td class="py-2">TTS JSON: <code>model</code>, <code>input</code>, <code>voice</code>, <code>language</code> (<code>en-us</code>/<code>id</code>), <code>response_format</code> (<code>mp3</code>/<code>wav</code>/<code>opus</code>/<code>flac</code>), <code>speed</code>.</td>
+              </tr>
+              <tr>
+                <td class="py-2 pr-3 font-mono text-indigo-400">POST</td>
+                <td class="py-2 pr-3 font-mono">/v1/audio/transcriptions</td>
+                <td class="py-2">Whisper STT multipart: <code>file</code>, <code>model</code> (<code>tiny</code>/<code>base</code>/<code>small</code>/<code>medium</code>/<code>large-v3-turbo</code>), <code>language</code> (<code>id</code>/<code>en</code>), <code>response_format</code> (<code>json</code>/<code>text</code>/<code>srt</code>/<code>verbose_json</code>).</td>
+              </tr>
+              <tr>
+                <td class="py-2 pr-3 font-mono text-emerald-400">GET</td>
+                <td class="py-2 pr-3 font-mono">/health</td>
+                <td class="py-2">Healthcheck server (tanpa auth, untuk Docker/Coolify).</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Code Snippets -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 text-xs">
+          <div class="space-y-1.5">
+            <div class="flex items-center justify-between">
+              <span class="text-slate-300 font-medium">1. Text-to-Speech — <code class="text-indigo-300">POST /v1/audio/speech</code></span>
+              <button @click="copyText(apiSnippet('tts'))" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200">Copy</button>
+            </div>
+            <pre class="bg-slate-950 border border-slate-800 rounded-xl p-3.5 overflow-x-auto text-indigo-300 leading-relaxed" x-text="apiSnippet('tts')"></pre>
+          </div>
+          <div class="space-y-1.5">
+            <div class="flex items-center justify-between">
+              <span class="text-slate-300 font-medium">2. Whisper STT — <code class="text-teal-300">POST /v1/audio/transcriptions</code></span>
+              <button @click="copyText(apiSnippet('stt'))" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200">Copy</button>
+            </div>
+            <pre class="bg-slate-950 border border-slate-800 rounded-xl p-3.5 overflow-x-auto text-teal-300 leading-relaxed" x-text="apiSnippet('stt')"></pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 5: SYSTEM & CREDITS -->
+    <section x-show="tab==='system'" class="space-y-6">
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
+        <div>
+          <div class="text-slate-400">OS & Arch</div>
+          <div class="font-mono font-medium text-slate-200 mt-0.5" x-text="`${sys.hardware?.os || '-'} (${sys.hardware?.arch || '-'})`"></div>
+        </div>
+        <div>
+          <div class="text-slate-400">Compute Device</div>
+          <div class="font-mono font-medium text-indigo-300 mt-0.5" x-text="(sys.hardware?.device || 'cpu').toUpperCase() + (sys.hardware?.gpu_name ? ' · ' + sys.hardware.gpu_name : '')"></div>
+        </div>
+        <div>
+          <div class="text-slate-400">RAM Usage</div>
+          <div class="font-mono font-medium text-slate-200 mt-0.5" x-text="`${sys.hardware?.ram_used_gb || 0} / ${sys.hardware?.ram_total_gb || 0} GB (${sys.hardware?.ram_percent || 0}%)`"></div>
+        </div>
+        <div>
+          <div class="text-slate-400">SQLite Stats</div>
+          <div class="font-mono font-medium text-slate-200 mt-0.5" x-text="`TTS: ${sys.stats?.total_tts || 0} · STT: ${sys.stats?.total_stt || 0} · API: ${sys.stats?.total_api_calls || 0}`"></div>
+        </div>
+      </div>
+
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <template x-for="eng in (sys.engines || [])" :key="eng.name">
           <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-2.5">
@@ -407,26 +503,6 @@
             </div>
           </div>
         </template>
-      </div>
-
-      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
-        <h2 class="text-sm font-semibold">OpenAI-Compatible API Snippets</h2>
-        <p class="text-xs text-slate-400">
-          Auth Status:
-          <strong class="text-slate-200" x-text="sys.api_auth_enabled ? `Protected (send Authorization: Bearer <API_KEY> or ${sys.api_key_header}: <API_KEY>)` : 'Open (API_KEY in .env is empty)'"></strong>
-        </p>
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 text-xs">
-          <div>
-            <div class="text-slate-400 mb-1">TTS — POST /v1/audio/speech</div>
-            <pre class="bg-slate-950 border border-slate-800 rounded-xl p-3 overflow-x-auto text-indigo-300"
-              x-text="`curl -X POST ${location.origin}/v1/audio/speech \\\n  -H 'Content-Type: application/json'${sys.api_auth_enabled ? ` \\\n  -H 'Authorization: Bearer YOUR_API_KEY'` : ''} \\\n  -d '{\"model\":\"kokoro\",\"input\":\"Hello from local TTS!\",\"voice\":\"af_heart\",\"response_format\":\"mp3\"}' \\\n  --output speech.mp3`"></pre>
-          </div>
-          <div>
-            <div class="text-slate-400 mb-1">Whisper STT — POST /v1/audio/transcriptions</div>
-            <pre class="bg-slate-950 border border-slate-800 rounded-xl p-3 overflow-x-auto text-teal-300"
-              x-text="`curl -X POST ${location.origin}/v1/audio/transcriptions \\\n${sys.api_auth_enabled ? `  -H 'Authorization: Bearer YOUR_API_KEY' \\\n` : ''}  -F file=@audio.mp3 \\\n  -F model=base`"></pre>
-          </div>
-        </div>
       </div>
       <!-- Credits & Open-Source Sources -->
       <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
@@ -467,7 +543,7 @@
 
   <footer class="max-w-6xl mx-auto px-4 pb-6 pt-2 text-[11px] text-slate-500 flex flex-wrap items-center justify-between gap-2">
     <span>LocalTTS — Self-hosted TTS & STT Hub (MIT License)</span>
-    <button @click="tab='api'; window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })"
+    <button @click="tab='system'; window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })"
       class="text-indigo-400 hover:text-indigo-300 underline">
       Credits & Open-Source Sources
     </button>
@@ -477,6 +553,7 @@
     function app() {
       return {
         tab: 'tts',
+        apiLang: 'curl',
         sys: {},
         clones: [],
         history: [],
@@ -701,6 +778,39 @@
         copyText(txt) {
           navigator.clipboard.writeText(txt);
           this.notify('Copied to clipboard!');
+        },
+        apiSnippet(kind) {
+          const base = location.origin;
+          const auth = this.sys.api_auth_enabled;
+          if (kind === 'tts') {
+            if (this.apiLang === 'curl') {
+              return `curl -X POST ${base}/v1/audio/speech \\\n  -H "Content-Type: application/json"${auth ? ` \\\n  -H "Authorization: Bearer YOUR_API_KEY"` : ''} \\\n  -d '{"model":"edge","input":"Halo dari LocalTTS!","voice":"id-ID-GadisNeural","language":"id","response_format":"mp3"}' \\\n  --output speech.mp3`;
+            }
+            if (this.apiLang === 'python') {
+              return `import requests\n\nres = requests.post(\n    "${base}/v1/audio/speech",${auth ? `\n    headers={"Authorization": "Bearer YOUR_API_KEY"},` : ''}\n    json={\n        "model": "edge",\n        "input": "Halo dari LocalTTS!",\n        "voice": "id-ID-GadisNeural",\n        "language": "id",\n        "response_format": "mp3",\n    },\n)\nres.raise_for_status()\nopen("speech.mp3", "wb").write(res.content)`;
+            }
+            if (this.apiLang === 'javascript') {
+              return `const res = await fetch("${base}/v1/audio/speech", {\n  method: "POST",\n  headers: {\n    "Content-Type": "application/json",${auth ? `\n    "Authorization": "Bearer YOUR_API_KEY",` : ''}\n  },\n  body: JSON.stringify({\n    model: "edge",\n    input: "Halo dari LocalTTS!",\n    voice: "id-ID-GadisNeural",\n    language: "id",\n    response_format: "mp3",\n  }),\n});\nconst buf = Buffer.from(await res.arrayBuffer());\nrequire("fs").writeFileSync("speech.mp3", buf);`;
+            }
+            if (this.apiLang === 'php') {
+              return `<?php\n$ch = curl_init("${base}/v1/audio/speech");\ncurl_setopt_array($ch, [\n  CURLOPT_POST => true,\n  CURLOPT_RETURNTRANSFER => true,\n  CURLOPT_HTTPHEADER => [\n    "Content-Type: application/json",${auth ? `\n    "Authorization: Bearer YOUR_API_KEY",` : ''}\n  ],\n  CURLOPT_POSTFIELDS => json_encode([\n    "model" => "edge",\n    "input" => "Halo dari LocalTTS!",\n    "voice" => "id-ID-GadisNeural",\n    "language" => "id",\n    "response_format" => "mp3",\n  ]),\n]);\n$audio = curl_exec($ch);\nfile_put_contents("speech.mp3", $audio);`;
+            }
+            return `package main\nimport ("bytes"; "io"; "net/http"; "os")\nfunc main() {\n  body := []byte(\`{"model":"edge","input":"Halo dari LocalTTS!","voice":"id-ID-GadisNeural","language":"id"}\`)\n  req, _ := http.NewRequest("POST", "${base}/v1/audio/speech", bytes.NewBuffer(body))\n  req.Header.Set("Content-Type", "application/json")${auth ? `\n  req.Header.Set("Authorization", "Bearer YOUR_API_KEY")` : ''}\n  resp, _ := http.DefaultClient.Do(req)\n  defer resp.Body.Close()\n  out, _ := os.Create("speech.mp3")\n  io.Copy(out, resp.Body)\n}`;
+          }
+          // STT
+          if (this.apiLang === 'curl') {
+            return `curl -X POST ${base}/v1/audio/transcriptions \\\n${auth ? `  -H "Authorization: Bearer YOUR_API_KEY" \\\n` : ''}  -F "file=@audio.mp3" \\\n  -F "model=base" \\\n  -F "language=id"`;
+          }
+          if (this.apiLang === 'python') {
+            return `import requests\n\nwith open("audio.mp3", "rb") as f:\n    res = requests.post(\n        "${base}/v1/audio/transcriptions",${auth ? `\n        headers={"Authorization": "Bearer YOUR_API_KEY"},` : ''}\n        files={"file": f},\n        data={"model": "base", "language": "id"},\n    )\nprint(res.json())`;
+          }
+          if (this.apiLang === 'javascript') {
+            return `const form = new FormData();\nform.append("file", new Blob([fs.readFileSync("audio.mp3")]), "audio.mp3");\nform.append("model", "base");\nform.append("language", "id");\n\nconst res = await fetch("${base}/v1/audio/transcriptions", {\n  method: "POST",${auth ? `\n  headers: { "Authorization": "Bearer YOUR_API_KEY" },` : ''}\n  body: form,\n});\nconsole.log(await res.json());`;
+          }
+          if (this.apiLang === 'php') {
+            return `<?php\n$ch = curl_init("${base}/v1/audio/transcriptions");\ncurl_setopt_array($ch, [\n  CURLOPT_POST => true,\n  CURLOPT_RETURNTRANSFER => true,${auth ? `\n  CURLOPT_HTTPHEADER => ["Authorization: Bearer YOUR_API_KEY"],` : ''}\n  CURLOPT_POSTFIELDS => [\n    "file" => new CURLFile("audio.mp3"),\n    "model" => "base",\n    "language" => "id",\n  ],\n]);\n$json = curl_exec($ch);\necho $json;`;
+          }
+          return `// Gunakan multipart/form-data ke ${base}/v1/audio/transcriptions\n// Field: file=@audio.mp3, model=base, language=id`;
         }
       };
     }
