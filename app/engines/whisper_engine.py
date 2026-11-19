@@ -1,8 +1,13 @@
 from __future__ import annotations
 
 import gc
+import io
+import shutil
+import subprocess
 import time
 from typing import Any
+
+import soundfile as sf
 
 from app.config import get_settings
 from app.core.hardware import detect_device
@@ -82,8 +87,22 @@ class WhisperEngine(BaseSTTEngine):
         self.last_used = time.time()
 
         lang_arg = language.strip() if language and language.strip() not in ("", "auto") else None
+
+        # Decode audio to 16kHz mono float32 numpy array via ffmpeg to avoid PyAV version issues
+        ffmpeg_bin = shutil.which("ffmpeg")
+        audio_input: Any = audio_path
+        if ffmpeg_bin:
+            proc = subprocess.run(
+                [ffmpeg_bin, "-y", "-i", audio_path, "-ar", "16000", "-ac", "1", "-f", "wav", "-acodec", "pcm_s16le", "pipe:1"],
+                capture_output=True,
+                check=False,
+            )
+            if proc.returncode == 0 and proc.stdout:
+                samples, _ = sf.read(io.BytesIO(proc.stdout), dtype="float32")
+                audio_input = samples
+
         segments_iter, info = self._model.transcribe(
-            audio_path,
+            audio_input,
             language=lang_arg,
             beam_size=5,
             vad_filter=True,
