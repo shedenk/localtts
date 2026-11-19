@@ -23,7 +23,9 @@ from app.core.manager import get_manager
 from app.db import (
     add_generation,
     add_voice_clone,
+    count_generations,
     delete_generation,
+    delete_generations_bulk,
     delete_voice_clone,
     get_generation,
     get_stats,
@@ -396,8 +398,33 @@ async def studio_stt_transcribe(
 
 
 @router.get("/history")
-def history_list(limit: int = 40, kind: Optional[str] = None):
-    return {"items": list_generations(limit=limit, kind=kind)}
+def history_list(limit: int = 10, page: int = 1, kind: Optional[str] = None):
+    page = max(1, page)
+    limit = max(1, min(100, limit))
+    offset = (page - 1) * limit
+    total = count_generations(kind=kind)
+    return {
+        "items": list_generations(limit=limit, offset=offset, kind=kind),
+        "total": total,
+        "page": page,
+        "limit": limit,
+        "total_pages": max(1, (total + limit - 1) // limit),
+    }
+
+
+@router.post("/history/bulk-delete")
+def history_bulk_delete(payload: dict):
+    ids = payload.get("ids") or []
+    kind = payload.get("kind")
+    delete_all = bool(payload.get("all", False))
+    rows = delete_generations_bulk(ids=ids, kind=kind, delete_all=delete_all)
+    out_dir = get_settings().outputs_path
+    for row in rows:
+        if row.get("audio_filename"):
+            p = out_dir / row["audio_filename"]
+            if p.exists():
+                p.unlink()
+    return {"ok": True, "deleted": len(rows)}
 
 
 @router.get("/history/{gen_id}/audio")

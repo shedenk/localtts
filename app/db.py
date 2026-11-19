@@ -114,18 +114,43 @@ def add_generation(
         return int(cur.lastrowid)
 
 
-def list_generations(limit: int = 50, kind: str | None = None) -> list[dict[str, Any]]:
+def list_generations(limit: int = 10, offset: int = 0, kind: str | None = None) -> list[dict[str, Any]]:
     with db_session() as conn:
         if kind:
             rows = conn.execute(
-                "SELECT * FROM generations WHERE kind = ? ORDER BY id DESC LIMIT ?",
-                (kind, limit),
+                "SELECT * FROM generations WHERE kind = ? ORDER BY id DESC LIMIT ? OFFSET ?",
+                (kind, limit, offset),
             ).fetchall()
         else:
             rows = conn.execute(
-                "SELECT * FROM generations ORDER BY id DESC LIMIT ?",
-                (limit,),
+                "SELECT * FROM generations ORDER BY id DESC LIMIT ? OFFSET ?",
+                (limit, offset),
             ).fetchall()
+        return [dict(r) for r in rows]
+
+
+def count_generations(kind: str | None = None) -> int:
+    with db_session() as conn:
+        if kind:
+            return int(conn.execute("SELECT COUNT(*) FROM generations WHERE kind = ?", (kind,)).fetchone()[0])
+        return int(conn.execute("SELECT COUNT(*) FROM generations").fetchone()[0])
+
+
+def delete_generations_bulk(ids: list[int] | None = None, kind: str | None = None, delete_all: bool = False) -> list[dict[str, Any]]:
+    with db_session() as conn:
+        if delete_all and kind:
+            rows = conn.execute("SELECT * FROM generations WHERE kind = ?", (kind,)).fetchall()
+            conn.execute("DELETE FROM generations WHERE kind = ?", (kind,))
+            return [dict(r) for r in rows]
+        if delete_all:
+            rows = conn.execute("SELECT * FROM generations").fetchall()
+            conn.execute("DELETE FROM generations")
+            return [dict(r) for r in rows]
+        if not ids:
+            return []
+        placeholders = ",".join("?" for _ in ids)
+        rows = conn.execute(f"SELECT * FROM generations WHERE id IN ({placeholders})", ids).fetchall()
+        conn.execute(f"DELETE FROM generations WHERE id IN ({placeholders})", ids)
         return [dict(r) for r in rows]
 
 
