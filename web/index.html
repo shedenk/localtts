@@ -518,11 +518,11 @@
               Base URL: <code class="text-indigo-300 font-mono" x-text="location.origin"></code> ·
               Auth: <strong class="text-slate-200" x-text="sys.api_auth_enabled ? `Protected (${sys.api_key_header} / Bearer)` : 'Open (API_KEY di .env kosong)'"></strong>
             </p>
-            <p class="text-[11px] text-amber-300/90 pt-1">
+            <p class="text-sm text-amber-300/95 pt-1">
               <span x-show="sys.api_auth_enabled">
-                API Key aktif: <code class="bg-slate-950 px-1.5 py-0.5 rounded font-mono text-amber-200" x-text="sys.api_key"></code> —
+                API Key aktif: <code class="bg-slate-950 px-2 py-0.5 rounded font-mono text-amber-200 font-semibold" x-text="sys.api_key"></code> —
               </span>
-              Ubah atau kosongkan <code class="font-mono text-slate-300">API_KEY</code> di file <code class="font-mono text-slate-300">.env</code> (atau Environment Variables di Coolify).
+              Ubah atau kosongkan <code class="font-mono text-slate-200">API_KEY</code> di file <code class="font-mono text-slate-200">.env</code> (atau Environment Variables di Coolify).
             </p>
           </div>
           <div class="flex flex-wrap items-center gap-1.5 text-xs ml-auto">
@@ -535,7 +535,7 @@
 
         <!-- Interactive Endpoint Table -->
         <div class="overflow-x-auto">
-          <div class="text-[11px] text-slate-400 mb-1.5">Klik baris endpoint di bawah untuk melihat detail Sample URL, Request, Response, & Error Code:</div>
+          <div class="text-sm font-medium text-slate-300 mb-2">Klik baris endpoint di bawah untuk melihat detail Sample URL, Request, Response, & Error Code:</div>
           <table class="w-full text-xs text-left border-collapse">
             <thead>
               <tr class="border-b border-slate-800 text-slate-400">
