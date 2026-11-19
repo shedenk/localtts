@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import ipaddress
 import os
+import socket
 import tempfile
 import time
 import uuid
@@ -131,12 +133,34 @@ def _format_srt(segments: list[dict]) -> str:
     return "\n".join(lines)
 
 
-def _download_audio_url(url: str, max_bytes: int = 0) -> tuple[bytes, str]:
-    parsed = urlparse(url.strip())
+def _validate_remote_url(url: str, label: str = "URL") -> str:
+    target = url.strip()
+    parsed = urlparse(target)
     if parsed.scheme not in ("http", "https") or not parsed.netloc:
-        raise HTTPException(status_code=400, detail="Invalid file_url. Must be http:// or https://.")
-    suffix = Path(parsed.path).suffix or ".mp3"
-    with httpx.stream("GET", url.strip(), follow_redirects=True, timeout=60.0) as resp:
+        raise HTTPException(status_code=400, detail=f"Invalid {label}. Must be http:// or https://.")
+    host = parsed.hostname
+    if not host:
+        raise HTTPException(status_code=400, detail=f"Invalid {label} hostname.")
+    try:
+        infos = socket.getaddrinfo(host, None)
+        for info in infos:
+            ip = ipaddress.ip_address(info[4][0])
+            if ip.is_loopback or ip.is_link_local or ip.is_multicast or ip.is_unspecified:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Blocked {label}: loopback and link-local/metadata addresses are not allowed.",
+                )
+    except HTTPException:
+        raise
+    except Exception:
+        pass
+    return target
+
+
+def _download_audio_url(url: str, max_bytes: int = 0) -> tuple[bytes, str]:
+    target = _validate_remote_url(url, "file_url")
+    suffix = Path(urlparse(target).path).suffix or ".mp3"
+    with httpx.stream("GET", target, follow_redirects=True, timeout=60.0) as resp:
         resp.raise_for_status()
         chunks = bytearray()
         for chunk in resp.iter_bytes(chunk_size=65536):

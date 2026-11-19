@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, Upl
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
+from app.api.openai_compat import _validate_remote_url
 from app.auth import require_api_auth
 from app.config import get_settings
 from app.core.audio_utils import MIME_TYPES
@@ -36,10 +37,7 @@ def _validate_webhook(url: str | None) -> str:
     target = url.strip() if (url and url.strip()) else get_settings().webhook_url.strip()
     if not target:
         return ""
-    parsed = urlparse(target)
-    if parsed.scheme not in ("http", "https") or not parsed.netloc:
-        raise HTTPException(status_code=400, detail="Invalid webhook_url. Must be http:// or https://.")
-    return target
+    return _validate_remote_url(target, "webhook_url")
 
 
 @router.post("/speech", status_code=status.HTTP_202_ACCEPTED)

@@ -456,8 +456,14 @@ def history_list(limit: int = 10, page: int = 1, kind: Optional[str] = None):
 
 @router.post("/history/bulk-delete")
 def history_bulk_delete(payload: dict):
-    ids = payload.get("ids") or []
+    raw_ids = payload.get("ids") or []
+    try:
+        ids = [int(x) for x in raw_ids]
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail="Invalid ids list.") from exc
     kind = payload.get("kind")
+    if kind is not None and kind not in ("tts", "stt"):
+        raise HTTPException(status_code=400, detail="Invalid kind.")
     delete_all = bool(payload.get("all", False))
     rows = delete_generations_bulk(ids=ids, kind=kind, delete_all=delete_all)
     out_dir = get_settings().outputs_path
