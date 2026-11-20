@@ -62,8 +62,13 @@ app.include_router(openai_router)
 app.include_router(jobs_router)
 app.include_router(studio_router)
 
+DOCS_DIR = Path(__file__).resolve().parent.parent / "docs"
+
 if (WEB_DIR / "assets").exists():
     app.mount("/assets", StaticFiles(directory=str(WEB_DIR / "assets")), name="assets")
+
+if DOCS_DIR.exists():
+    app.mount("/docs", StaticFiles(directory=str(DOCS_DIR)), name="docs")
 
 
 @app.get("/health")
