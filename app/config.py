@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     api_key: str = ""
     api_key_header: str = "X-API-Key"
 
+    # Access Control Whitelist (empty = allow all)
+    allowed_ips: str = ""       # Comma-separated IPs or CIDRs, e.g. 127.0.0.1,103.10.20.30,192.168.1.0/24
+    allowed_domains: str = ""   # Comma-separated domains/wildcards, e.g. tts.myminio.cloud,*.example.com
+
     # Hardware & Engines
     device: str = "auto"
     enabled_engines: str = "kokoro,edge,whisper,omnivoice,qwen3"
@@ -66,6 +70,14 @@ class Settings(BaseSettings):
     @property
     def enabled_engine_list(self) -> list[str]:
         return [e.strip().lower() for e in self.enabled_engines.split(",") if e.strip()]
+
+    @property
+    def allowed_ip_list(self) -> list[str]:
+        return [ip.strip() for ip in self.allowed_ips.split(",") if ip.strip()]
+
+    @property
+    def allowed_domain_list(self) -> list[str]:
+        return [d.strip().lower() for d in self.allowed_domains.split(",") if d.strip()]
 
     @property
     def data_path(self) -> Path:

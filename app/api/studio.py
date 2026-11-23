@@ -13,12 +13,13 @@ from typing import Any, Optional
 
 from pydantic import BaseModel
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse
 
 from app.auth import require_ui_auth
 from app.config import get_settings, update_env_file
+from app.core.access_control import get_client_ip, get_request_host
 from app.core.audio_utils import MIME_TYPES, encode_audio, save_audio_file
 from app.core.hardware import get_hardware_info
 from app.core.logger import clear_logs, get_recent_logs, log_info, log_warning
@@ -90,6 +91,8 @@ class SettingsUpdateRequest(BaseModel):
     session_secret: Optional[str] = None
     api_key: Optional[str] = None
     api_key_header: Optional[str] = None
+    allowed_ips: Optional[str] = None
+    allowed_domains: Optional[str] = None
     device: Optional[str] = None
     enabled_engines: Optional[str] = None
     idle_unload_seconds: Optional[int] = None
@@ -104,7 +107,7 @@ class SettingsUpdateRequest(BaseModel):
 
 
 @router.get("/settings")
-def get_settings_endpoint():
+def get_settings_endpoint(request: Request):
     s = get_settings()
     return {
         "app_name": s.app_name,
@@ -115,6 +118,10 @@ def get_settings_endpoint():
         "session_secret": s.session_secret,
         "api_key": s.api_key,
         "api_key_header": s.api_key_header,
+        "allowed_ips": s.allowed_ips,
+        "allowed_domains": s.allowed_domains,
+        "current_client_ip": get_client_ip(request),
+        "current_host": get_request_host(request),
         "device": s.device,
         "enabled_engines": s.enabled_engines,
         "enabled_engine_list": s.enabled_engine_list,
@@ -133,7 +140,7 @@ def get_settings_endpoint():
 
 
 @router.post("/settings")
-def update_settings_endpoint(req: SettingsUpdateRequest):
+def update_settings_endpoint(req: SettingsUpdateRequest, request: Request):
     updates: dict[str, Any] = {}
 
     if req.app_name is not None:
@@ -152,6 +159,10 @@ def update_settings_endpoint(req: SettingsUpdateRequest):
         updates["API_KEY"] = req.api_key.strip()
     if req.api_key_header is not None:
         updates["API_KEY_HEADER"] = req.api_key_header.strip()
+    if req.allowed_ips is not None:
+        updates["ALLOWED_IPS"] = req.allowed_ips.strip()
+    if req.allowed_domains is not None:
+        updates["ALLOWED_DOMAINS"] = req.allowed_domains.strip()
     if req.device is not None:
         dev = req.device.strip().lower()
         if dev not in ["auto", "cuda", "mps", "cpu"]:
@@ -193,7 +204,7 @@ def update_settings_endpoint(req: SettingsUpdateRequest):
         updates["LOG_MAX_MB"] = req.log_max_mb
 
     if not updates:
-        return {"ok": True, "message": "Tidak ada perubahan", "settings": get_settings_endpoint()}
+        return {"ok": True, "message": "Tidak ada perubahan", "settings": get_settings_endpoint(request)}
 
     # Update .env file & in-memory cache
     update_env_file(updates)
@@ -210,7 +221,7 @@ def update_settings_endpoint(req: SettingsUpdateRequest):
     return {
         "ok": True,
         "message": "Pengaturan .env berhasil disimpan dan langsung diterapkan!",
-        "settings": get_settings_endpoint(),
+        "settings": get_settings_endpoint(request),
     }
 
 

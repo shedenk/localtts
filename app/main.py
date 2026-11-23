@@ -14,6 +14,7 @@ from app.api.studio import router as studio_router
 from app.api.ui_auth import router as auth_router
 from app.auth import is_ui_authenticated
 from app.config import get_settings
+from app.core.access_control import AccessControlMiddleware
 from app.core.job_worker import job_worker_loop
 from app.core.logger import log_info
 from app.core.manager import get_manager, idle_cleanup_loop
@@ -56,6 +57,8 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
 )
+
+app.add_middleware(AccessControlMiddleware)
 
 app.include_router(auth_router)
 app.include_router(openai_router)

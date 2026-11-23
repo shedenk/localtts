@@ -15,6 +15,12 @@ Keamanan API dikendalikan melalui environment variable `API_KEY`:
 
 > Endpoint `/api/*` dilindungi oleh session cookie UI (`AUTH_USERNAME` & `AUTH_PASSWORD` di `.env`).
 
+### Whitelist IP & Domain (`ALLOWED_IPS` & `ALLOWED_DOMAINS`)
+Anda juga dapat membatasi akses ke seluruh server (UI maupun API) hanya untuk IP atau domain tertentu:
+- **`ALLOWED_IPS`**: Daftar IP/CIDR dipisah koma (contoh: `127.0.0.1,::1,103.10.20.30,192.168.1.0/24`). Mendukung header proxy `CF-Connecting-IP` (Cloudflare), `X-Forwarded-For` (Coolify/Traefik/Nginx), dan `X-Real-IP`.
+- **`ALLOWED_DOMAINS`**: Daftar domain atau wildcard subdomain dipisah koma (contoh: `tts.myminio.cloud,app.domain.com,*.domain.com`). Memvalidasi header `Origin` / `Referer` (untuk panggilan lintas domain) atau `Host`.
+- Request dari IP/domain di luar daftar akan ditolak dengan status **`403 Forbidden`** dan dicatat pada System Logs. Endpoint `/health` selalu diizinkan agar healthcheck Docker/Coolify tetap berjalan normal.
+
 ---
 
 ## 2. OpenAI-Compatible Endpoints

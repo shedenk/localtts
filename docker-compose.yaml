@@ -21,6 +21,8 @@ services:
       - SESSION_SECRET=${SESSION_SECRET:-change-this-secret-in-coolify}
       - API_KEY=${API_KEY:-}
       - API_KEY_HEADER=${API_KEY_HEADER:-X-API-Key}
+      - ALLOWED_IPS=${ALLOWED_IPS:-}
+      - ALLOWED_DOMAINS=${ALLOWED_DOMAINS:-}
       - DEVICE=${DEVICE:-auto}
       - ENABLED_ENGINES=${ENABLED_ENGINES:-kokoro,edge,whisper,omnivoice,qwen3}
       - IDLE_UNLOAD_SECONDS=${IDLE_UNLOAD_SECONDS:-300}

@@ -222,6 +222,8 @@ docker compose up -d --build
 | `SESSION_SECRET` | `...` | Kunci enkripsi cookie session UI |
 | `API_KEY` | *(kosong)* | Kunci autentikasi API `/v1/*` (kosong = publik tanpa header) |
 | `API_KEY_HEADER` | `X-API-Key` | Header kustom selain `Authorization: Bearer` |
+| `ALLOWED_IPS` | *(kosong)* | Whitelist IP/CIDR yang diizinkan akses, pisah koma (contoh: `127.0.0.1,103.10.20.30,192.168.1.0/24`) |
+| `ALLOWED_DOMAINS` | *(kosong)* | Whitelist domain/wildcard yang diizinkan akses (contoh: `tts.myminio.cloud,*.domain.com`) |
 | `DEVICE` | `auto` | `auto` \| `cuda` \| `mps` \| `cpu` |
 | `ENABLED_ENGINES` | `kokoro,edge,whisper,omnivoice,qwen3` | Daftar engine yang aktif |
 | `IDLE_UNLOAD_SECONDS` | `300` | Detik idle sebelum model otomatis di-unload dari RAM (`0` = nonaktif) |

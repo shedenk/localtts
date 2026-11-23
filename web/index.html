@@ -1205,6 +1205,46 @@
           </div>
         </div>
 
+        <!-- 2b. Access Control Whitelist (IP & Domain) -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4 lg:col-span-2">
+          <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
+            <div class="flex items-center gap-2">
+              <span class="text-base">🛡️</span>
+              <div>
+                <h3 class="text-sm font-semibold text-slate-100">Firewall Whitelist — Allow IP &amp; Domain</h3>
+                <p class="text-[11px] text-slate-400">Batasi akses server &amp; API hanya untuk IP atau domain tertentu. Kosongkan untuk mengizinkan semua akses.</p>
+              </div>
+            </div>
+            <div class="flex flex-wrap items-center gap-2 text-[11px] font-mono text-slate-400">
+              <span class="px-2 py-1 rounded-lg bg-slate-950 border border-slate-800">IP Anda: <strong class="text-emerald-300" x-text="settingsData.current_client_ip || '-'"></strong></span>
+              <span class="px-2 py-1 rounded-lg bg-slate-950 border border-slate-800">Host: <strong class="text-indigo-300" x-text="settingsData.current_host || '-'"></strong></span>
+            </div>
+          </div>
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 text-xs">
+            <div class="space-y-1.5">
+              <div class="flex items-center justify-between">
+                <label class="text-slate-300 font-medium">Allowed IPs / CIDR (<code class="text-indigo-300">ALLOWED_IPS</code>)</label>
+                <button type="button" @click="addMyIp()" class="text-[11px] text-emerald-400 hover:text-emerald-300 underline">+ Tambah IP Saya</button>
+              </div>
+              <input type="text" x-model="settingsData.allowed_ips" placeholder="Contoh: 127.0.0.1,::1,103.10.20.30,192.168.1.0/24"
+                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-indigo-500 font-mono">
+              <span class="text-[11px] text-slate-500 block">Pisahkan dengan koma. Mendukung IP tunggal, <code class="text-slate-400">localhost</code>, dan CIDR subnet. Mendukung header proxy Cloudflare &amp; Coolify.</span>
+            </div>
+            <div class="space-y-1.5">
+              <div class="flex items-center justify-between">
+                <label class="text-slate-300 font-medium">Allowed Domains (<code class="text-indigo-300">ALLOWED_DOMAINS</code>)</label>
+                <button type="button" @click="addCurrentDomain()" class="text-[11px] text-indigo-400 hover:text-indigo-300 underline">+ Tambah Domain Ini</button>
+              </div>
+              <input type="text" x-model="settingsData.allowed_domains" placeholder="Contoh: tts.myminio.cloud,app.domain.com,*.domain.com"
+                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-indigo-500 font-mono">
+              <span class="text-[11px] text-slate-500 block">Pisahkan dengan koma. Mendukung domain persis &amp; wildcard subdomain (<code class="text-slate-400">*.domain.com</code>). Cek header Origin/Referer &amp; Host.</span>
+            </div>
+          </div>
+          <div class="text-[11px] text-amber-300/90 bg-amber-950/30 border border-amber-800/40 rounded-xl px-3 py-2">
+            ⚠️ <strong>Penting:</strong> Sebelum mengisi <code>ALLOWED_IPS</code> atau <code>ALLOWED_DOMAINS</code>, pastikan IP atau domain Anda saat ini ikut dimasukkan agar tidak terkunci dari UI. Endpoint <code>/health</code> selalu diizinkan untuk Docker/Coolify.
+          </div>
+        </div>
+
         <!-- 3. Hardware & Engine -->
         <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
           <div class="flex items-center gap-2 border-b border-slate-800 pb-3">
@@ -1518,6 +1558,10 @@
           auth_password: '',
           api_key: '',
           api_key_header: 'X-API-Key',
+          allowed_ips: '',
+          allowed_domains: '',
+          current_client_ip: '',
+          current_host: '',
           device: 'auto',
           enabled_engines: 'kokoro,edge,whisper,omnivoice,qwen3',
           idle_unload_seconds: 300,
@@ -1653,6 +1697,22 @@
           this.showApiKey = true;
           this.notify('API Key acak baru berhasil dibuat.');
         },
+        addMyIp() {
+          const ip = (this.settingsData.current_client_ip || '').trim();
+          if (!ip) return;
+          const items = (this.settingsData.allowed_ips || '').split(',').map(s => s.trim()).filter(Boolean);
+          if (!items.includes(ip)) items.push(ip);
+          this.settingsData.allowed_ips = items.join(',');
+          this.notify(`IP ${ip} ditambahkan ke daftar Allowed IPs.`);
+        },
+        addCurrentDomain() {
+          const host = (this.settingsData.current_host || location.hostname || '').trim();
+          if (!host) return;
+          const items = (this.settingsData.allowed_domains || '').split(',').map(s => s.trim()).filter(Boolean);
+          if (!items.includes(host)) items.push(host);
+          this.settingsData.allowed_domains = items.join(',');
+          this.notify(`Domain ${host} ditambahkan ke daftar Allowed Domains.`);
+        },
         async loadSettings() {
           this.settingsLoading = true;
           try {
@@ -1679,6 +1739,8 @@
               auth_password: this.settingsData.auth_password || '',
               api_key: this.settingsData.api_key || '',
               api_key_header: this.settingsData.api_key_header || 'X-API-Key',
+              allowed_ips: this.settingsData.allowed_ips || '',
+              allowed_domains: this.settingsData.allowed_domains || '',
               device: this.settingsData.device,
               enabled_engines: this.settingsData.enabled_engines,
               idle_unload_seconds: Number(this.settingsData.idle_unload_seconds) || 0,
