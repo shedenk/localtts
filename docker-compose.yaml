@@ -10,8 +10,8 @@ services:
     restart: unless-stopped
     # Coolify menggunakan Traefik/Caddy untuk routing domain ke port container.
     # Gunakan expose agar tidak bentrok dengan port host jika ada service lain di VPS.
-    ports:
-      - "${PORT:-8000}:8000"
+    expose:
+      - "8000"
     environment:
       - SERVICE_FQDN_LOCALTTS=tts.adsmedia.video
       - PORT=${PORT:-8000}
